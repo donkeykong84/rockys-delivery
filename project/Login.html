@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Sign in</title>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html,body { margin:0; padding:0; min-height:100vh; background:#2a2419; font-family:Geist,system-ui,sans-serif; color:var(--ink); }
+    .stage { min-height:100vh; display:grid; grid-template-columns:1fr 460px; }
+    @media (max-width:800px) { .stage { grid-template-columns:1fr; } .splash { display:none; } }
+    .splash { background:var(--ink); color:var(--paper); padding:60px 50px; display:flex; flex-direction:column; justify-content:space-between; }
+    .splash .pmark { font-family:'DM Serif Display'; font-size:64px; line-height:1; font-weight:400; }
+    .splash .pmark em { color:#d9b13a; font-style:italic; }
+    .splash p { font-family:'DM Serif Display'; font-size:22px; font-style:italic; color:rgba(244,239,230,0.8); line-height:1.4; max-width:360px; }
+    .splash .demo { font-size:11px; color:rgba(244,239,230,0.55); border-top:1px solid rgba(244,239,230,0.1); padding-top:16px; line-height:1.7; font-family:'JetBrains Mono', ui-monospace, monospace; }
+    .panel { background:var(--paper); padding:50px 44px; display:flex; flex-direction:column; justify-content:center; }
+    .panel h1 { font-family:'DM Serif Display'; font-size:38px; font-weight:400; margin:0 0 4px; }
+    .panel h1 em { color:var(--olive); font-style:italic; }
+    .panel p.sub { color:var(--ink-3); font-size:13px; margin:0 0 28px; }
+    .lab { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-3); display:block; margin-bottom:6px; margin-top:14px; }
+    input,select { width:100%; box-sizing:border-box; font-family:Geist; padding:11px 13px; border:1px solid var(--paper-3); border-radius:8px; background:var(--paper); font-size:14px; }
+    input:focus,select:focus { outline:none; border-color:var(--ink); }
+    button.primary { width:100%; margin-top:22px; padding:14px; background:var(--ink); color:var(--paper); border:none; border-radius:999px; cursor:pointer; font-size:13px; font-family:Geist; font-weight:500; letter-spacing:0.04em; }
+    .toggle { font-size:12px; color:var(--ink-3); margin-top:18px; text-align:center; }
+    .toggle a { color:var(--olive); cursor:pointer; }
+    .err { color:var(--persimmon); font-size:12px; margin-top:10px; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex:1; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="rk-config.js"></script>
+  <script src="rk-auth.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const cfg = RK_CONFIG.load();
+
+    function Login() {
+      const [mode, setMode] = React.useState('signin');
+      const [form, setForm] = React.useState({ email: '', password: '', name: '', role: 'customer',
+        addr_label: 'Home', addr_line1: '', addr_line2: '', addr_city: '', addr_postcode: '', addr_note: '' });
+      const [err, setErr] = React.useState('');
+      const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+      const submit = (e) => {
+        e && e.preventDefault();
+        setErr('');
+        let r;
+        if (mode === 'signin') {
+          r = RK_AUTH.signIn(form.email, form.password);
+        } else {
+          const payload = { email: form.email, name: form.name, role: form.role };
+          if (form.role === 'customer') {
+            if (!form.addr_line1 || !form.addr_city || !form.addr_postcode) {
+              return setErr('Address line, city and postcode are required.');
+            }
+            payload.address = { label: form.addr_label || 'Home', line1: form.addr_line1, line2: form.addr_line2, city: form.addr_city, postcode: form.addr_postcode, note: form.addr_note };
+          }
+          r = RK_AUTH.signUp(payload);
+        }
+        if (!r.ok) return setErr(r.error);
+        window.location.href = RK_AUTH.landingFor(r.user);
+      };
+
+      const quickIn = (email) => {
+        const r = RK_AUTH.signIn(email);
+        if (r.ok) window.location.href = RK_AUTH.landingFor(r.user);
+      };
+
+      return (
+        <div className="stage">
+          <div className="splash">
+            <div>
+              <div className="pmark">{cfg.brand_name}<em>.</em></div>
+              <p style={{ marginTop: 36 }}>"{cfg.brand_tagline || 'Your corner shop, delivered.'}"</p>
+            </div>
+            <div className="demo">
+              <div style={{ color: '#d9b13a', marginBottom: 6 }}>// demo accounts — click to enter</div>
+              {RK_AUTH.list().map(u => (
+                <div key={u.email} style={{ cursor: 'pointer' }} onClick={() => quickIn(u.email)}>
+                  → {u.email.padEnd(22, ' ')} {u.role}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <form className="panel" onSubmit={submit}>
+            <h1>{mode === 'signin' ? <>Welcome <em>back.</em></> : <>Make an <em>account.</em></>}</h1>
+            <p className="sub">{mode === 'signin' ? 'Sign in to continue.' : 'Tell us a little about you.'}</p>
+
+            {mode === 'signup' && (
+              <>
+                <span className="lab">Full name</span>
+                <input value={form.name} onChange={e => setF('name', e.target.value)} required/>
+                <span className="lab">I'm a…</span>
+                <select value={form.role} onChange={e => setF('role', e.target.value)}>
+                  <option value="customer">Customer (shopper)</option>
+                  <option value="picker">Picker (staff)</option>
+                  <option value="driver">Driver (staff)</option>
+                  <option value="stock">Stock handler (staff)</option>
+                  <option value="manager">Manager</option>
+                </select>
+                {form.role === 'customer' && (
+                  <>
+                    <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--paper-3)' }}>
+                      <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, marginBottom: 2 }}>Delivery <em style={{ color: 'var(--olive)', fontStyle: 'italic' }}>address.</em></div>
+                      <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>So your picker knows where to send the basket. You can change or add more later.</div>
+                    </div>
+                    <span className="lab">Label</span>
+                    <input value={form.addr_label} onChange={e => setF('addr_label', e.target.value)} placeholder="Home"/>
+                    <span className="lab">Address line 1*</span>
+                    <input value={form.addr_line1} onChange={e => setF('addr_line1', e.target.value)} required={form.role === 'customer'} placeholder="21 Mott Street"/>
+                    <span className="lab">Address line 2</span>
+                    <input value={form.addr_line2} onChange={e => setF('addr_line2', e.target.value)} placeholder="Apt 4F"/>
+                    <div className="row">
+                      <div style={{ flex: 2 }}>
+                        <span className="lab">City*</span>
+                        <input value={form.addr_city} onChange={e => setF('addr_city', e.target.value)} required={form.role === 'customer'} placeholder="London"/>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <span className="lab">Postcode*</span>
+                        <input value={form.addr_postcode} onChange={e => setF('addr_postcode', e.target.value)} required={form.role === 'customer'} placeholder="E1 6QL"/>
+                      </div>
+                    </div>
+                    <span className="lab">Delivery note (optional)</span>
+                    <input value={form.addr_note} onChange={e => setF('addr_note', e.target.value)} placeholder="Leave with concierge"/>
+                  </>
+                )}
+              </>
+            )}
+
+            <span className="lab">Email</span>
+            <input type="email" value={form.email} onChange={e => setF('email', e.target.value)} required placeholder="you@example.com"/>
+            <span className="lab">Password</span>
+            <input type="password" value={form.password} onChange={e => setF('password', e.target.value)} placeholder="(any — demo)"/>
+
+            {err && <div className="err">{err}</div>}
+            <button type="submit" className="primary">{mode === 'signin' ? 'Sign in →' : 'Create account →'}</button>
+
+            <div className="toggle">
+              {mode === 'signin'
+                ? <>New here? <a onClick={() => { setErr(''); setMode('signup'); }}>Make an account</a></>
+                : <>Already have one? <a onClick={() => { setErr(''); setMode('signin'); }}>Sign in</a></>}
+            </div>
+          </form>
+        </div>
+      );
+    }
+    document.title = `${cfg.brand_name} · sign in`;
+    ReactDOM.createRoot(document.getElementById('root')).render(<Login/>);
+  </script>
+</body>
+</html>

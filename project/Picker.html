@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Picker</title>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html,body { margin:0; padding:0; min-height:100vh; background:#2a2419; font-family:Geist,system-ui,sans-serif; }
+    .stage { max-width:1200px; margin:0 auto; padding:18px; display:grid; grid-template-columns:420px 1fr; gap:24px; align-items:start; }
+    @media (max-width:900px) { .stage { grid-template-columns:1fr; } }
+    .device-wrap { display:flex; justify-content:center; }
+    .side { background:var(--paper); border-radius:14px; padding:22px; min-height:760px; box-sizing:border-box; }
+    .side h2 { font-family:'DM Serif Display'; font-size:24px; margin:0; font-weight:400; }
+    .side h2 em { color:var(--olive); font-style:italic; }
+    .lab { font-size:10px; letter-spacing:0.16em; color:var(--ink-3); text-transform:uppercase; }
+    .order-card { padding:12px; border:1px solid var(--paper-3); border-radius:8px; margin-top:8px; cursor:pointer; }
+    .order-card.on { border-color:var(--ink); background:var(--paper-2); }
+    .empty { background:var(--paper); border-radius:14px; padding:60px 32px; text-align:center; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="rk-config.js"></script>
+  <script src="rk-auth.js"></script>
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script src="rk-store.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="rk-shared.jsx"></script>
+  <script type="text/babel" src="rk-home.jsx"></script>
+  <script type="text/babel" src="rk-home-stock.jsx"></script>
+  <script type="text/babel" src="rk-screens.jsx"></script>
+  <script type="text/babel" src="rk-map.jsx"></script>
+  <script type="text/babel" src="rk-chat.jsx"></script>
+  <script type="text/babel" src="rk-roles.jsx"></script>
+  <script type="text/babel" src="rk-role-page.jsx"></script>
+  <script type="text/babel">
+    function PickerPage() {
+      const [orders] = useOrders();
+      const pending = orders.filter(o => o.stage < 2 && !o.cancelled);
+      const [activeId, setActiveId] = React.useState(null);
+      React.useEffect(() => { if (!activeId && pending[0]) setActiveId(pending[0].id); }, [pending.length]);
+      const order = pending.find(o => o.id === activeId) || pending[0];
+      const log = (m, k) => console.log(`[picker] ${m}`);
+
+      if (!order) {
+        return (
+          <>
+            <RKRoleHeader pageEmoji="📋" pageColor="var(--ink)"/>
+            <div className="stage" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="empty">
+                <div style={{ fontFamily: 'DM Serif Display', fontSize: 36, fontWeight: 400 }}>No <em style={{ color: 'var(--olive)', fontStyle: 'italic' }}>orders.</em></div>
+                <div style={{ marginTop: 10, color: 'var(--ink-3)', fontSize: 14 }}>The queue is empty. New customer orders show up here automatically.</div>
+                <a href="Customer.html" style={{ display: 'inline-block', marginTop: 18, padding: '10px 18px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 999, textDecoration: 'none', fontSize: 12 }}>Place a test order →</a>
+              </div>
+            </div>
+          </>
+        );
+      }
+
+      const togglePicked = (lineId, val) => {
+        const next = { ...order.picked, [lineId]: val };
+        window.RK_STORE.updateOrder(order.id, { picked: next });
+      };
+      const advance = () => {
+        // hand to driver: jump from any stage to 2 (out for delivery / awaiting driver pickup)
+        window.RK_STORE.updateOrder(order.id, { stage: 2, handedOffAt: Date.now() });
+        if (window.STAFF_CHAT) window.STAFF_CHAT.send('picker', 'Theo (Picker)', `📦 ${order.id} ready for pickup at the shop.`);
+      };
+      const cancel = () => { window.RK_STORE.cancelOrder(order.id); };
+      const restart = () => window.RK_STORE.updateOrder(order.id, { picked: {}, stage: 1 });
+
+      // bump to stage 1 if currently 0
+      React.useEffect(() => {
+        if (order && order.stage === 0) window.RK_STORE.updateOrder(order.id, { stage: 1 });
+      }, [order?.id]);
+
+      return (
+        <>
+          <RKRoleHeader pageEmoji="📋" pageColor="var(--ink)"/>
+          <div className="stage">
+            <div className="device-wrap">
+              <IOSDevice width={390} height={780}>
+                <PickerApp order={order}
+                  onPicked={togglePicked}
+                  onAdvance={advance}
+                  onCancel={cancel}
+                  onRestart={restart}
+                  pushLog={log}/>
+              </IOSDevice>
+            </div>
+            <div className="side">
+              <h2>The <em>queue.</em></h2>
+              <div className="rk-rule" style={{ margin: '14px 0' }}/>
+              <div className="lab">Active</div>
+              <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, marginTop: 2 }}>#{order.id}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{order.lines.length} items · {order.customer?.name || 'Customer'}</div>
+              {pending.length > 1 && (
+                <>
+                  <div className="lab" style={{ marginTop: 18 }}>Up next</div>
+                  {pending.slice(1).map(o => (
+                    <div key={o.id} className="order-card" onClick={() => setActiveId(o.id)}>
+                      <b>#{o.id}</b> · {o.lines.length} items · {o.customer?.name || 'Customer'}
+                    </div>
+                  ))}
+                </>
+              )}
+              <div style={{ marginTop: 18, padding: 12, background: 'var(--paper-2)', borderRadius: 8, fontFamily: 'DM Serif Display', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+                Tap <b>Got</b> on each line. When all picked, hand off → Driver gets it instantly. <br/>Try the <b>☰</b> menu, the <b>⚠</b> damage report, or skip with <b>↷</b>.
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<PickerPage/>);
+  </script>
+</body>
+</html>
