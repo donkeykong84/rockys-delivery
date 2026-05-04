@@ -414,7 +414,7 @@ function SHOrders() {
 // DRIVER — accepts handoff, GPS map, multi-stop list
 // ════════════════════════════════════════════════════════════
 function DriverApp({ orders, onAdvance }) {
-  const driverOrders = orders.filter(o => o.stage === 2);
+  const driverOrders = orders.filter(o => o.stage === 2 && !o.cancelled);
   const [active, setActive] = React.useState(driverOrders[0]?.id);
   React.useEffect(() => {
     if (!active && driverOrders[0]) setActive(driverOrders[0].id);
