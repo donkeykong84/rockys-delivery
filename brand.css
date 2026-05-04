@@ -1,0 +1,98 @@
+/* Rocky's — editorial premium grocer brand system
+   ------------------------------------------------
+   Type pairing: DM Serif Display (editorial display) + Geist (UI / body)
+   Color: paper white, deep ink, one olive accent, one persimmon CTA
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Serif+Text:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* paper & ink */
+  --paper:   #f4efe6;   /* warm off-white, the "page" */
+  --paper-2: #ebe4d6;   /* deeper paper, for cards/sections */
+  --paper-3: #ddd2bd;   /* deepest paper, edges & dividers */
+  --ink:     #1d1a14;   /* near-black with brown undertone */
+  --ink-2:   #3a3429;   /* body */
+  --ink-3:   #6b6253;   /* muted / metadata */
+  --ink-4:   #a89e8b;   /* tertiary / placeholders */
+
+  /* brand */
+  --olive:    #4a5436;   /* Rocky's primary — deep olive */
+  --olive-2:  #6c7a4f;
+  --persimmon:#c4541d;   /* CTA / sale / hot */
+  --persimmon-2:#e26a32;
+  --gold:     #b8893a;   /* metadata, price seal */
+  --plum:     #5b2a3a;   /* alt accent (wine, sale tags) */
+
+  /* type */
+  --display: 'DM Serif Display', 'DM Serif Text', Georgia, serif;
+  --serif:   'DM Serif Text', Georgia, serif;
+  --sans:    'Geist', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* radii — restrained, editorial */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+}
+
+/* small caps metadata label */
+.rk-eyebrow {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.rk-eyebrow-olive { color: var(--olive); }
+.rk-eyebrow-persimmon { color: var(--persimmon); }
+
+/* a thin double rule, very magazine */
+.rk-rule {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding-top: 3px;
+}
+.rk-rule-thin {
+  height: 1px;
+  background: var(--ink);
+  opacity: 0.85;
+}
+.rk-rule-hair {
+  height: 1px;
+  background: var(--paper-3);
+}
+
+/* drop cap for editorial paragraphs */
+.rk-dropcap::first-letter {
+  font-family: var(--display);
+  float: left;
+  font-size: 3.4em;
+  line-height: 0.85;
+  padding: 4px 8px 0 0;
+  color: var(--olive);
+}
+
+/* a circular price seal — like a stamp */
+.rk-seal {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--persimmon);
+  color: #fff8ec;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: var(--display);
+  transform: rotate(-8deg);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.08);
+}
+.rk-seal-sm { width: 44px; height: 44px; font-size: 13px; }
+.rk-seal-num { font-size: 20px; line-height: 1; }
+.rk-seal-cents { font-size: 10px; letter-spacing: 0.05em; opacity: 0.9; font-family: var(--sans); font-weight: 600; }
+
+/* default body */
+.rk-body { font-family: var(--sans); color: var(--ink-2); -webkit-font-smoothing: antialiased; }
+.rk-display { font-family: var(--display); color: var(--ink); letter-spacing: -0.01em; }
+.rk-serif-italic { font-family: var(--serif); font-style: italic; color: var(--ink); }

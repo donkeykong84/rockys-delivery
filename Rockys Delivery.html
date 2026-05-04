@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rocky's — Mini Market Delivery System</title>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Geist', system-ui, sans-serif; }
+    #root { width: 100vw; min-height: 100vh; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="android-frame.jsx"></script>
+  <script type="text/babel" src="rk-shared.jsx"></script>
+  <script type="text/babel" src="rk-home.jsx"></script>
+  <script type="text/babel" src="rk-home-stock.jsx"></script>
+  <script type="text/babel" src="rk-screens.jsx"></script>
+  <script type="text/babel" src="rk-ops.jsx"></script>
+
+  <script type="text/babel">
+    function Prototype({ start = 'home', initialCart = [], track = null, useStock = false }) {
+      const [screen, setScreen] = React.useState(start);
+      const [cart, setCart] = React.useState(initialCart);
+      const [openItem, setOpenItem] = React.useState(null);
+      const [pdQty, setPdQty] = React.useState(1);
+      const [trackStage, setTrackStage] = React.useState(track ?? 1);
+
+      const cartCount = cart.reduce((s, l) => s + l.qty, 0);
+      const addToCart = (item, qty = 1) => setCart(p => {
+        const i = p.findIndex(l => l.item.id === item.id);
+        if (i >= 0) { const n = [...p]; n[i] = { ...n[i], qty: n[i].qty + qty }; return n; }
+        return [...p, { item, qty }];
+      });
+      const setQty = (id, q) => setCart(p => p.map(l => l.item.id === id ? { ...l, qty: q } : l));
+      const remove = (id) => setCart(p => p.filter(l => l.item.id !== id));
+      const goNav = (id) => {
+        if (id === 'home' || id === 'browse') setScreen('home');
+        else if (id === 'cart') setScreen('cart');
+        else if (id === 'orders') setScreen('track');
+      };
+
+      let body, hideTabs = false, label = screen;
+      if (screen === 'home') {
+        body = useStock
+          ? <RKHomeStock onAdd={addToCart} cartCount={cartCount} onNavTab={goNav} onOpenProduct={(it) => { setOpenItem(it); setScreen('product'); }}/>
+          : <RKHome onAdd={addToCart} cartCount={cartCount} onNavTab={goNav} onOpenProduct={(it) => { setOpenItem(it); setScreen('product'); }}/>;
+      } else if (screen === 'product') {
+        body = <RKProduct item={openItem || (useStock ? null : ROCKY_CATALOG.picks[2])} qty={pdQty} onQty={setPdQty}
+          onBack={() => setScreen('home')} onAdd={(it, q) => { addToCart(it, q); setScreen('cart'); }}/>;
+      } else if (screen === 'cart') {
+        body = <RKCart lines={cart} onQty={setQty} onRemove={remove} onBack={() => setScreen('home')} onCheckout={() => setScreen('checkout')}/>;
+      } else if (screen === 'checkout') {
+        hideTabs = true;
+        const sub = cart.reduce((s, l) => s + l.item.price * l.qty, 0);
+        const t = sub + (sub > 35 ? 0 : 4.95) + sub * 0.08;
+        body = <RKCheckout total={t > 0 ? t : 47.85} onBack={() => setScreen('cart')} onPlace={() => { setTrackStage(0); setScreen('track'); }}/>;
+      } else if (screen === 'track') {
+        body = <RKTrack stage={trackStage} onContact={() => {}}/>;
+      }
+      const showTabs = !hideTabs && screen !== 'product';
+      return (
+        <div data-screen-label={label} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--paper)' }}>
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>{body}</div>
+          {showTabs && <RKTabBar active={screen === 'cart' ? 'cart' : screen === 'track' ? 'orders' : 'home'} cartCount={cartCount} onNav={goNav}/>}
+        </div>
+      );
+    }
+
+    function Phone({ children, dark = false }) {
+      return <IOSDevice width={390} height={760} dark={dark}>{children}</IOSDevice>;
+    }
+
+    function AndroidDevice({ width = 412, height = 760, children }) {
+      return (
+        <div style={{ width, height, borderRadius: 36, overflow: 'hidden', background: '#000', padding: 8, boxSizing: 'border-box', boxShadow: '0 40px 80px rgba(0,0,0,0.18)' }}>
+          <div style={{ width: '100%', height: '100%', borderRadius: 28, overflow: 'hidden', background: 'var(--paper)', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', width: 16, height: 16, borderRadius: '50%', background: '#000', zIndex: 50 }}/>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', fontFamily: 'Roboto, system-ui', fontSize: 13, color: 'var(--ink)', zIndex: 10 }}>
+              <span>9:41</span>
+              <span style={{ width: 14, height: 8, border: '1px solid var(--ink)', borderRadius: 1, position: 'relative' }}><span style={{ position: 'absolute', inset: 1, background: 'var(--ink)' }}/></span>
+            </div>
+            <div style={{ width: '100%', height: '100%' }}>{children}</div>
+            <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', width: 110, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.4)', zIndex: 60 }}/>
+          </div>
+        </div>
+      );
+    }
+
+    const sampleCart = [
+      { item: { id: 'p1', name: 'Heirloom Tomatoes', producer: 'Bellwether Farm', price: 7.25, unit: 'lb', kind: 'tomato' }, qty: 1 },
+      { item: { id: 'p3', name: 'Castelvetrano Olives', producer: 'Sicily', price: 8.50, unit: '8oz', kind: 'olive' }, qty: 1 },
+      { item: { id: 'p4', name: 'Comté, 18 mo.', producer: 'Marcel Petite', price: 14.00, unit: '¼ lb', kind: 'cheese' }, qty: 1 },
+      { item: { id: 'p2', name: 'Country Sourdough', producer: 'Tartine, daily', price: 9.00, unit: 'loaf', kind: 'bread' }, qty: 1 },
+    ];
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="arch" title="System architecture" subtitle="Three apps · one stock DB · qwen3:4b on your 8GB droplet · live & testable">
+            <DCArtboard id="diagram" label="Flow diagram · how it all connects" width={1100} height={720}>
+              <RKFlowDiagram/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="testable" title="Testable mock — wired to real data"
+            subtitle="Real Open Food Facts photos · live stock with low-stock alerts · barcode scan · LLM-powered substitutions">
+            <DCArtboard id="owner" label="Shop Owner · scan a barcode (try 5449000000996)" width={390} height={760}>
+              <Phone><RKOwner/></Phone>
+            </DCArtboard>
+            <DCArtboard id="picker" label="Picker · AI-organized aisle list" width={390} height={760}>
+              <Phone><RKPicker/></Phone>
+            </DCArtboard>
+            <DCArtboard id="customer-stock" label="Customer · real OFF products" width={390} height={760}>
+              <Phone><Prototype start="home" useStock={true}/></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="customer" title="Customer App — editorial direction"
+            subtitle="Hand-illustrated direction; the polished version. Swap to real photos via 'Customer · real OFF products' artboard above.">
+            <DCArtboard id="home" label="01 · The Market" width={390} height={760}>
+              <Phone><Prototype start="home"/></Phone>
+            </DCArtboard>
+            <DCArtboard id="product" label="02 · Product detail" width={390} height={760}>
+              <Phone><Prototype start="product"/></Phone>
+            </DCArtboard>
+            <DCArtboard id="cart" label="03 · Basket" width={390} height={760}>
+              <Phone><Prototype start="cart" initialCart={sampleCart}/></Phone>
+            </DCArtboard>
+            <DCArtboard id="checkout" label="04 · Checkout" width={390} height={760}>
+              <Phone><Prototype start="checkout" initialCart={sampleCart}/></Phone>
+            </DCArtboard>
+            <DCArtboard id="track-1" label="05 · Order · Being picked" width={390} height={760}>
+              <Phone><Prototype start="track" initialCart={sampleCart} track={1}/></Phone>
+            </DCArtboard>
+            <DCArtboard id="track-2" label="06 · Order · On the way" width={390} height={760}>
+              <Phone><Prototype start="track" initialCart={sampleCart} track={2}/></Phone>
+            </DCArtboard>
+            <DCArtboard id="track-3" label="07 · Order · Delivered" width={390} height={760}>
+              <Phone><Prototype start="track" initialCart={sampleCart} track={3}/></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="android" title="Android parity check">
+            <DCArtboard id="a-home" label="Market · Android" width={412} height={760}>
+              <AndroidDevice width={412} height={760}><Prototype start="home"/></AndroidDevice>
+            </DCArtboard>
+            <DCArtboard id="a-track" label="Tracking · Android" width={412} height={760}>
+              <AndroidDevice width={412} height={760}><Prototype start="track" initialCart={sampleCart} track={2}/></AndroidDevice>
+            </DCArtboard>
+          </DCSection>
+
+          <DCPostIt x={20} y={40} rotate={-2}>
+            <b>Read me first → flow diagram.</b> Then poke the <b>Owner</b> screen — paste a real EAN like <code>5449000000996</code> (Coke 330ml) and watch it auto-fetch the photo and ask qwen3:4b for the aisle. Switch the brain dropdown to "Ollama" once you've set <code>localStorage.rk-ollama-url = "http://your-droplet:11434"</code>.
+          </DCPostIt>
+          <DCPostIt x={760} y={40} rotate={2}>
+            <b>Picker</b> screen: tap "✕" on any item to mark out-of-stock; the LLM proposes a sub. <b>Customer · real OFF products</b> shows the live stock catalog (low-stock badges, OOS dimmed). The editorial direction (paper + serif) is preserved across all surfaces.
+          </DCPostIt>
+        </DesignCanvas>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

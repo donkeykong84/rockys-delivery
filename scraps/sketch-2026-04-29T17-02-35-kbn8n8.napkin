@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "created": "2026-04-29T17:02:35.055Z",
+  "modified": "2026-04-29T17:31:12.176Z",
+  "objects": [
+    {
+      "id": "tmakkrfng",
+      "type": "sticky",
+      "x": 629,
+      "y": 157,
+      "width": 274,
+      "height": 199,
+      "data": {
+        "content": "",
+        "color": "blue"
+      }
+    },
+    {
+      "id": "0bbmn1728",
+      "type": "text",
+      "x": 739,
+      "y": 200,
+      "data": {
+        "content": "Ollama",
+        "fontSize": 16,
+        "color": "#C2622D",
+        "bold": false
+      },
+      "width": 51,
+      "height": 21
+    },
+    {
+      "id": "h6ys9ey4a",
+      "type": "text",
+      "x": 710,
+      "y": 174,
+      "data": {
+        "content": "8gb cpu droplet ",
+        "fontSize": 16,
+        "color": "#C2622D",
+        "bold": false
+      },
+      "width": 121,
+      "height": 21
+    },
+    {
+      "id": "5xve0uhjb",
+      "type": "sticky",
+      "x": 464,
+      "y": 488,
+      "width": 150,
+      "height": 150,
+      "data": {
+        "content": "",
+        "color": "purple"
+      }
+    },
+    {
+      "id": "6p1n47shq",
+      "type": "sticky",
+      "x": 910,
+      "y": 479,
+      "width": 150,
+      "height": 150,
+      "data": {
+        "content": "",
+        "color": "purple"
+      }
+    },
+    {
+      "id": "180hkffas",
+      "type": "line",
+      "x": 633,
+      "y": 353,
+      "endX": 555,
+      "endY": 490,
+      "data": {
+        "fill": null,
+        "stroke": "#C2622D",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "zbb4fdsc9",
+      "type": "line",
+      "x": 896,
+      "y": 350,
+      "endX": 977,
+      "endY": 485,
+      "data": {
+        "fill": null,
+        "stroke": "#C2622D",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "ptjpulpme",
+      "type": "line",
+      "x": 496,
+      "y": 493,
+      "endX": 636,
+      "endY": 339,
+      "data": {
+        "fill": null,
+        "stroke": "#3D7C2F",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "3fxtnc3st",
+      "type": "line",
+      "x": 991,
+      "y": 484,
+      "endX": 894,
+      "endY": 335,
+      "data": {
+        "fill": null,
+        "stroke": "#3D7C2F",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "shu4n0nsj",
+      "type": "text",
+      "x": 696,
+      "y": 274,
+      "data": {
+        "content": "Running dolphin 7b",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 140,
+      "height": 21
+    },
+    {
+      "id": "q8hn1eusp",
+      "type": "text",
+      "x": 511,
+      "y": 506,
+      "data": {
+        "content": "Website",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 59,
+      "height": 21
+    },
+    {
+      "id": "se21fca2e",
+      "type": "text",
+      "x": 933,
+      "y": 496,
+      "data": {
+        "content": "delivery driver",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 103,
+      "height": 21
+    },
+    {
+      "id": "djo7j50ea",
+      "type": "sticky",
+      "x": 675,
+      "y": 497,
+      "width": 150,
+      "height": 139,
+      "data": {
+        "content": "",
+        "color": "purple"
+      }
+    },
+    {
+      "id": "vnwb9kf2c",
+      "type": "line",
+      "x": 821,
+      "y": 553,
+      "endX": 918,
+      "endY": 557,
+      "data": {
+        "fill": null,
+        "stroke": "#3D7C2F",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "tic7p1yhe",
+      "type": "line",
+      "x": 760,
+      "y": 351,
+      "endX": 759,
+      "endY": 503,
+      "data": {
+        "fill": null,
+        "stroke": "#3D7C2F",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "pmmg0znkm",
+      "type": "text",
+      "x": 718,
+      "y": 525,
+      "data": {
+        "content": "Picker",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 45,
+      "height": 21
+    },
+    {
+      "id": "425mr1ni1",
+      "type": "text",
+      "x": 700,
+      "y": 553,
+      "data": {
+        "content": "Recieves organised list from ollama",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 115,
+      "height": 63
+    },
+    {
+      "id": "ezb9bu3i5",
+      "type": "text",
+      "x": 481,
+      "y": 547,
+      "data": {
+        "content": "Website receives order and sends it to ollama",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 124,
+      "height": 63
+    },
+    {
+      "id": "t5xyiim8t",
+      "type": "text",
+      "x": 949,
+      "y": 534,
+      "data": {
+        "content": "Receives order from the picker",
+        "fontSize": 16,
+        "color": "#3D7C2F",
+        "bold": false
+      },
+      "width": 97,
+      "height": 63
+    },
+    {
+      "id": "2cszmgwh2",
+      "type": "stroke",
+      "x": 0,
+      "y": 0,
+      "data": {
+        "points": [
+          {
+            "x": 890,
+            "y": 546
+          },
+          {
+            "x": 890,
+            "y": 547
+          },
+          {
+            "x": 889,
+            "y": 549
+          },
+          {
+            "x": 889,
+            "y": 551
+          },
+          {
+            "x": 889,
+            "y": 552
+          },
+          {
+            "x": 889,
+            "y": 554
+          },
+          {
+            "x": 889,
+            "y": 556
+          },
+          {
+            "x": 888,
+            "y": 558
+          },
+          {
+            "x": 888,
+            "y": 560
+          },
+          {
+            "x": 888,
+            "y": 561
+          },
+          {
+            "x": 888,
+            "y": 562
+          },
+          {
+            "x": 888,
+            "y": 562
+          },
+          {
+            "x": 888,
+            "y": 562
+          },
+          {
+            "x": 887,
+            "y": 563
+          },
+          {
+            "x": 887,
+            "y": 564
+          },
+          {
+            "x": 886,
+            "y": 565
+          },
+          {
+            "x": 886,
+            "y": 565
+          }
+        ],
+        "color": "#8B2500",
+        "size": 2
+      }
+    },
+    {
+      "id": "oiqdbz24l",
+      "type": "stroke",
+      "x": 0,
+      "y": 0,
+      "data": {
+        "points": [
+          {
+            "x": 977,
+            "y": 368
+          },
+          {
+            "x": 977,
+            "y": 368
+          },
+          {
+            "x": 977,
+            "y": 368
+          },
+          {
+            "x": 977,
+            "y": 369
+          },
+          {
+            "x": 978,
+            "y": 368
+          }
+        ],
+        "color": "#8B2500",
+        "size": 2
+      }
+    }
+  ]
+}

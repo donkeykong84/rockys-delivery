@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Manager</title>
+  <meta name="theme-color" content="#1d1a14"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html,body { margin:0; padding:0; min-height:100vh; background:var(--paper-2); font-family:Geist,system-ui,sans-serif; color:var(--ink); }
+    .wrap { max-width:1400px; margin:0 auto; padding:22px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+    @media (max-width:1100px) { .grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:700px)  { .grid { grid-template-columns:1fr; } }
+    .card { background:var(--paper); border-radius:14px; padding:22px; box-sizing:border-box; }
+    .card h3 { font-family:'DM Serif Display'; font-size:22px; margin:0 0 4px; font-weight:400; }
+    .card h3 em { color:var(--olive); font-style:italic; }
+    .lab { font-size:10px; letter-spacing:0.16em; color:var(--ink-3); text-transform:uppercase; margin-bottom:6px; }
+    .stat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .stat .n { font-family:'DM Serif Display'; font-size:36px; font-weight:400; }
+    .stat .delta { font-size:11px; color:var(--olive); }
+    table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+    table th { text-align:left; padding:8px 6px; border-bottom:1px solid var(--paper-3); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3); font-weight:500; }
+    table td { padding:9px 6px; border-bottom:1px solid var(--paper-3); }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600; letter-spacing:0.05em; }
+    .pill.received { background:var(--paper-3); color:var(--ink-2); }
+    .pill.picking  { background:#fff1cc; color:#8a6300; }
+    .pill.out      { background:#dee5d4; color:var(--olive); }
+    .pill.done     { background:#1f3923; color:#dee5d4; }
+    .pill.cancel   { background:#f7d8d2; color:var(--persimmon); }
+    button.primary { padding:8px 14px; background:var(--ink); color:var(--paper); border:none; border-radius:999px; cursor:pointer; font-size:12px; font-family:Geist; }
+    button.ghost { padding:6px 10px; background:transparent; border:1px solid var(--paper-3); border-radius:6px; cursor:pointer; font-size:11px; font-family:Geist; }
+    input,select { font-family:Geist; padding:8px 10px; border:1px solid var(--paper-3); border-radius:6px; background:var(--paper); font-size:12px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
+    .chat-bub { padding:8px 12px; border-radius:10px; margin-top:8px; max-width:85%; font-size:12px; }
+    .chat-bub .who { font-size:10px; color:var(--ink-3); margin-bottom:2px; }
+    .chat-bub.picker { background:#fff1cc; }
+    .chat-bub.stock  { background:var(--paper-2); }
+    .chat-bub.driver { background:#dee5d4; }
+    .chart-bar { display:flex; align-items:flex-end; gap:6px; height:120px; margin-top:10px; padding:0 4px; }
+    .chart-bar > div { flex:1; background:var(--olive); border-radius:4px 4px 0 0; min-height:4px; position:relative; }
+    .chart-bar > div span { position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:9px; color:var(--ink-3); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="rk-config.js"></script>
+  <script src="rk-supabase.js"></script>
+  <script src="rk-auth.js"></script>
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script src="rk-store.js"></script>
+</head>
+<body>
+  <script type="text/babel" src="rk-role-page.jsx"></script>
+  <script type="text/babel">
+    const STAGE_LABELS = ['Received', 'Picking', 'Out for delivery', 'Delivered'];
+    const STAGE_PILL = ['received', 'picking', 'out', 'done'];
+
+    function Manager() {
+      const [orders] = useOrders();
+      const [tick, setTick] = React.useState(0);
+      React.useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 1500); return () => clearInterval(t); }, []);
+      const [staff, setStaff] = React.useState(() => RK_AUTH.staffOnly());
+      const [low, setLow] = React.useState([]);
+      React.useEffect(() => { window.STOCK_API.lowStock().then(setLow); }, [tick]);
+
+      const today = orders.filter(o => Date.now() - o.placedAt < 86400000);
+      const revenue = orders.reduce((s, o) => s + o.lines.reduce((ss, l) => ss + l.item.price * l.qty, 0), 0);
+      const todayRev = today.reduce((s, o) => s + o.lines.reduce((ss, l) => ss + l.item.price * l.qty, 0), 0);
+      const delivered = orders.filter(o => o.stage === 3).length;
+      const inflight = orders.filter(o => o.stage > 0 && o.stage < 3 && !o.cancelled).length;
+      const fmt = (n) => '£' + n.toFixed(2);
+
+      // pseudo last-7-days from order timestamps
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0, 0, 0, 0);
+        const next = d.getTime() + 86400000;
+        const dayOrders = orders.filter(o => o.placedAt >= d.getTime() && o.placedAt < next);
+        return { label: d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 1), n: dayOrders.length, rev: dayOrders.reduce((s, o) => s + o.lines.reduce((ss, l) => ss + l.item.price * l.qty, 0), 0) };
+      });
+      const maxRev = Math.max(...days.map(d => d.rev), 1);
+
+      const [chat, setChat] = React.useState([]);
+      React.useEffect(() => {
+        const load = () => { try { setChat(JSON.parse(localStorage.getItem('rk-chat') || '[]')); } catch (e) {} };
+        load();
+        const onStorage = (e) => { if (e.key === 'rk-chat') load(); };
+        window.addEventListener('storage', onStorage);
+        const t = setInterval(load, 1500);
+        return () => { window.removeEventListener('storage', onStorage); clearInterval(t); };
+      }, []);
+
+      // staff add
+      const [newStaff, setNewStaff] = React.useState({ name: '', email: '', role: 'picker', password: '' });
+      const addStaff = () => {
+        if (!newStaff.email || !newStaff.name) return alert('Name and email are required.');
+        if (!newStaff.password || newStaff.password.length < 6) return alert('Password must be at least 6 characters.');
+        const r = RK_AUTH.addStaff(newStaff);
+        if (r.ok) { setStaff(RK_AUTH.staffOnly()); setNewStaff({ name: '', email: '', role: 'picker', password: '' }); }
+        else alert(r.error);
+      };
+      const removeStaff = (email) => { if (confirm(`Remove ${email}?`)) { RK_AUTH.removeStaff(email); setStaff(RK_AUTH.staffOnly()); } };
+
+      const cancel = (id) => { if (confirm(`Cancel order ${id}?`)) RK_STORE.cancelOrder(id); };
+      const reset = () => { if (confirm('Wipe all orders & restock everything? (demo reset)')) { RK_STORE.reset(); window.STOCK_API.reset(); } };
+
+      return (
+        <>
+          <RKRoleHeader pageEmoji="◆" pageColor="var(--ink)"/>
+          <div className="wrap">
+            <div className="card" style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3>Today, at a <em>glance.</em></h3>
+                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+              </div>
+              <div className="stat-row" style={{ flex: 1, marginLeft: 24, minWidth: 380 }}>
+                <div className="stat"><div className="lab">Today rev</div><div className="n">{fmt(todayRev)}</div></div>
+                <div className="stat"><div className="lab">Orders</div><div className="n">{today.length}</div></div>
+                <div className="stat"><div className="lab">In-flight</div><div className="n" style={{ color: 'var(--persimmon)' }}>{inflight}</div></div>
+                <div className="stat"><div className="lab">Delivered</div><div className="n" style={{ color: 'var(--olive)' }}>{delivered}</div></div>
+              </div>
+            </div>
+
+            <div className="grid">
+              {/* Revenue chart */}
+              <div className="card">
+                <div className="lab">Last 7 days</div>
+                <h3>Revenue<em>.</em></h3>
+                <div className="chart-bar">
+                  {days.map((d, i) => (
+                    <div key={i} style={{ height: `${(d.rev / maxRev) * 100}%`, background: i === 6 ? 'var(--persimmon)' : 'var(--olive)' }}>
+                      <span>{d.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 28 }}>All-time: {fmt(revenue)}</div>
+              </div>
+
+              {/* Live orders */}
+              <div className="card" style={{ gridColumn: 'span 2' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3>Live <em>orders.</em></h3>
+                  <button className="ghost" onClick={reset}>Reset demo data</button>
+                </div>
+                <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+                  <table>
+                    <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Stage</th><th></th></tr></thead>
+                    <tbody>
+                      {orders.length === 0 && <tr><td colSpan="6" style={{ color: 'var(--ink-3)', fontFamily: 'DM Serif Display', fontStyle: 'italic', padding: 22 }}>No orders yet — place one from <a href="Customer.html">the shop</a>.</td></tr>}
+                      {orders.slice().reverse().map(o => (
+                        <tr key={o.id}>
+                          <td><b>#{o.id}</b></td>
+                          <td>{o.customer?.name || '—'}</td>
+                          <td>{o.lines.length}</td>
+                          <td>{fmt(o.lines.reduce((s, l) => s + l.item.price * l.qty, 0))}</td>
+                          <td><span className={`pill ${o.cancelled ? 'cancel' : STAGE_PILL[o.stage]}`}>{o.cancelled ? 'Cancelled' : STAGE_LABELS[o.stage]}</span></td>
+                          <td>{!o.cancelled && o.stage < 3 && <button className="ghost" onClick={() => cancel(o.id)}>Cancel</button>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Staff */}
+              <div className="card" style={{ gridColumn: 'span 2' }}>
+                <h3>Your <em>team.</em></h3>
+                <table>
+                  <thead><tr><th>Name</th><th>Role</th><th>Email</th><th></th></tr></thead>
+                  <tbody>
+                    {staff.map(s => (
+                      <tr key={s.email}>
+                        <td>{s.name}</td>
+                        <td><span className="pill received">{s.role}</span></td>
+                        <td style={{ color: 'var(--ink-3)' }}>{s.email}</td>
+                        <td>{s.role !== 'manager' && <button className="ghost" onClick={() => removeStaff(s.email)}>Remove</button>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="row" style={{ marginTop: 12 }}>
+                  <input placeholder="Full name" value={newStaff.name} onChange={e => setNewStaff({ ...newStaff, name: e.target.value })}/>
+                  <input placeholder="email@rockys.shop" value={newStaff.email} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })}/>
+                  <input type="password" placeholder="Password (min 6 chars)" value={newStaff.password} onChange={e => setNewStaff({ ...newStaff, password: e.target.value })}/>
+                  <select value={newStaff.role} onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}>
+                    <option value="picker">Picker</option>
+                    <option value="driver">Driver</option>
+                    <option value="stock">Stock handler</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                  <button className="primary" onClick={addStaff}>+ Add staff</button>
+                </div>
+              </div>
+
+              {/* Chat history */}
+              <div className="card">
+                <h3>Staff <em>chat.</em></h3>
+                <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+                  {chat.length === 0 && <div style={{ marginTop: 12, fontFamily: 'DM Serif Display', fontStyle: 'italic', color: 'var(--ink-3)' }}>No messages yet.</div>}
+                  {chat.slice().reverse().slice(0, 30).reverse().map((m, i) => (
+                    <div key={i} className={`chat-bub ${m.role}`}>
+                      <div className="who">{m.from} · {new Date(m.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+                      {m.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Low stock */}
+              <div className="card">
+                <h3>Low <em>stock.</em></h3>
+                {low.length === 0 && <div style={{ marginTop: 12, fontFamily: 'DM Serif Display', fontStyle: 'italic', color: 'var(--ink-3)' }}>All shelves are full.</div>}
+                <table>
+                  <tbody>
+                    {low.slice(0, 8).map(it => (
+                      <tr key={it.id}>
+                        <td>{it.name}</td>
+                        <td style={{ color: 'var(--ink-3)' }}>{it.aisle}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--persimmon)', fontWeight: 600 }}>{it.qty} left</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <a href="StockHandler.html" style={{ display: 'block', marginTop: 12, fontSize: 12, color: 'var(--olive)' }}>Open stock room →</a>
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    ReactDOM.createRoot(document.body.appendChild(document.createElement('div'))).render(<Manager/>);
+  </script>
+</body>
+</html>
