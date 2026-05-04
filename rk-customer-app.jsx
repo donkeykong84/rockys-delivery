@@ -51,9 +51,8 @@ function CustomerApp({ inDeviceFrame = true }) {
     if (id === 'account') setScreen('account');
   };
 
-  const [placing, setPlacing] = React.useState(false);
-  const place = async () => {
-    if (!cart.length || placing) return;
+  const place = () => {
+    if (!cart.length) return;
     const addr = user?.addresses?.find(a => a.id === selectedAddrId) || user?.addresses?.[0];
     if (user && !addr) { alert('Please add a delivery address first.'); return; }
     const fmtAddr = addr ? `${addr.line1}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city} ${addr.postcode}` : '21 Mott St, London E1 6QL';
@@ -61,17 +60,10 @@ function CustomerApp({ inDeviceFrame = true }) {
       ? { email: user.email, name: user.name, address: fmtAddr, addressId: addr?.id, note: pickerNote }
       : { email: 'guest@local', name: 'Guest', address: fmtAddr, note: pickerNote };
     const extra = addr?.lat && addr?.lng ? { lat: addr.lat, lng: addr.lng } : {};
-    setPlacing(true);
-    try {
-      await window.RK_STORE.placeOrder(cart, { ...customer, ...extra });
-      setCart([]);
-      setPickerNote('');
-      setScreen('track');
-    } catch (e) {
-      alert('Could not place order. Please try again.');
-    } finally {
-      setPlacing(false);
-    }
+    window.RK_STORE.placeOrder(cart, { ...customer, ...extra });
+    setCart([]);
+    setPickerNote('');
+    setScreen('track');
   };
 
   const handleAddAddress = (draft) => {
