@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rocky's — Live Tester</title>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html, body { margin: 0; padding: 0; background: #2a2419; font-family: 'Geist', system-ui, sans-serif; min-height: 100vh; }
+    #root { min-height: 100vh; }
+    .tester-shell { max-width: 1480px; margin: 0 auto; padding: 18px 18px 40px; }
+    .tester-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; margin-bottom: 14px;
+      background: var(--paper); border-radius: 12px; gap: 14px; flex-wrap: wrap;
+    }
+    .tabs { display: flex; gap: 4px; background: var(--paper-2); padding: 4px; border-radius: 999px; }
+    .tab { padding: 8px 16px; border-radius: 999px; cursor: pointer; font-family: 'Geist'; font-size: 12px; font-weight: 600; color: var(--ink-3); border: none; background: transparent; letter-spacing: 0.02em; }
+    .tab.on { background: var(--ink); color: var(--paper); }
+    .stage { display: grid; grid-template-columns: 390px 1fr; gap: 24px; align-items: start; }
+    .stage.full { grid-template-columns: 1fr; }
+    .stage.split4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .stage.split4 .device-wrap { transform: scale(0.78); transform-origin: top center; margin-bottom: -120px; }
+    .device-wrap { display: flex; justify-content: center; }
+    .role-cap { color: var(--paper); text-align: center; margin-bottom: 6px; font-family: 'DM Serif Display'; font-size: 16px; }
+    .role-cap em { color: #d9b13a; font-style: italic; }
+    .side {
+      background: var(--paper); border-radius: 14px; padding: 22px;
+      color: var(--ink); min-height: 760px; box-sizing: border-box;
+    }
+    .side h2 { font-family: 'DM Serif Display', serif; font-size: 24px; margin: 0; font-weight: 400; }
+    .side h2 em { color: var(--olive); font-style: italic; }
+    .side .lab { font-family: 'Geist'; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+    .live-log { background: #0f0d09; color: #d9b13a; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; padding: 12px; border-radius: 8px; max-height: 260px; overflow-y: auto; line-height: 1.5; }
+    .live-log .t { color: #6b6253; }
+    .live-log .ok { color: #8aa66b; }
+    .live-log .warn { color: #e26a32; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--paper-2); font-size: 11px; color: var(--ink-3); }
+    .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--olive); }
+    .order-card { padding: 12px; border: 1px solid var(--paper-3); border-radius: 8px; margin-top: 8px; cursor: pointer; }
+    .order-card.on { border-color: var(--ink); background: var(--paper-2); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="rk-shared.jsx"></script>
+  <script type="text/babel" src="rk-home.jsx"></script>
+  <script type="text/babel" src="rk-home-stock.jsx"></script>
+  <script type="text/babel" src="rk-screens.jsx"></script>
+  <script type="text/babel" src="rk-chat.jsx"></script>
+  <script type="text/babel" src="rk-roles.jsx"></script>
+
+  <script type="text/babel">
+    const TesterContext = React.createContext(null);
+    const useTester = () => React.useContext(TesterContext);
+    const now = () => new Date().toLocaleTimeString('en-GB');
+
+    function TesterProvider({ children }) {
+      const [orders, setOrders] = React.useState([]);
+      const [activeOrderId, setActiveOrderId] = React.useState(null);
+      const [log, setLog] = React.useState([{ t: now(), m: 'Tester ready · brain=' + window.BRAIN.backend, k: 'ok' }]);
+      const pushLog = React.useCallback((m, k = '') => setLog(L => [...L, { t: now(), m, k }].slice(-100)), []);
+
+      const placeOrder = (lines) => {
+        const id = 'R-' + (4800 + orders.length + 1).toString();
+        const order = { id, lines, stage: 0, placedAt: Date.now(), subs: {}, picked: {} };
+        setOrders(o => [...o, order]);
+        setActiveOrderId(id);
+        pushLog(`Order ${id} placed · ${lines.length} lines`, 'ok');
+        lines.forEach(l => window.STOCK_API.decrement(l.item.id, l.qty));
+        return id;
+      };
+      const updateOrder = (id, patch) => setOrders(O => O.map(o => o.id === id ? { ...o, ...patch } : o));
+      const removeOrder = (id) => setOrders(O => O.filter(o => o.id !== id));
+      const advance = (id) => {
+        setOrders(O => O.map(o => {
+          if (o.id !== id) return o;
+          const ns = Math.min(3, o.stage + 1);
+          const lbl = ['received','picking','out for delivery','delivered'][ns];
+          pushLog(`${id} → ${lbl}`, 'ok');
+          return { ...o, stage: ns };
+        }));
+      };
+
+      return <TesterContext.Provider value={{ orders, setOrders, activeOrderId, setActiveOrderId, placeOrder, updateOrder, removeOrder, advance, log, pushLog }}>{children}</TesterContext.Provider>;
+    }
+
+    // ─── Customer device frame ────────────────────────────
+    function CustomerDevice() {
+      const { placeOrder, pushLog, orders } = useTester();
+      const [cart, setCart] = React.useState([]);
+      const [screen, setScreen] = React.useState('home');
+      const [openItem, setOpenItem] = React.useState(null);
+      const [trackStage, setTrackStage] = React.useState(0);
+      const [myOrderId, setMyOrderId] = React.useState(null);
+
+      const cartCount = cart.reduce((s, l) => s + l.qty, 0);
+      const addToCart = (item, qty = 1) => {
+        setCart(p => {
+          const i = p.findIndex(l => l.item.id === item.id);
+          if (i >= 0) { const n = [...p]; n[i] = { ...n[i], qty: n[i].qty + qty }; return n; }
+          return [...p, { item, qty }];
+        });
+        pushLog(`Customer added ${item.name} ×${qty}`);
+      };
+      const setQty = (id, q) => setCart(p => p.map(l => l.item.id === id ? { ...l, qty: q } : l));
+      const removeLine = (id) => setCart(p => p.filter(l => l.item.id !== id));
+      const goNav = (id) => setScreen(id === 'home' || id === 'browse' ? 'home' : id === 'cart' ? 'cart' : 'track');
+
+      React.useEffect(() => {
+        if (myOrderId) {
+          const o = orders.find(x => x.id === myOrderId);
+          if (o) setTrackStage(o.stage);
+        }
+      }, [orders, myOrderId]);
+
+      let body, hideTabs = false;
+      if (screen === 'home')      body = <RKHomeStock onAdd={addToCart} cartCount={cartCount} onNavTab={goNav} onOpenProduct={(it) => { setOpenItem(it); setScreen('product'); }}/>;
+      else if (screen === 'product') body = <RKProduct item={openItem} qty={1} onBack={() => setScreen('home')} onAdd={(it, q) => { addToCart(it, q); setScreen('cart'); }}/>;
+      else if (screen === 'cart')    body = <RKCart lines={cart} onQty={setQty} onRemove={removeLine} onBack={() => setScreen('home')} onCheckout={() => setScreen('checkout')}/>;
+      else if (screen === 'checkout') {
+        hideTabs = true;
+        const sub = cart.reduce((s, l) => s + l.item.price * l.qty, 0);
+        const t = sub + (sub > 35 ? 0 : 4.95) + sub * 0.08;
+        body = <RKCheckout total={t > 0 ? t : 47.85} onBack={() => setScreen('cart')}
+          onPlace={() => { const id = placeOrder(cart); setMyOrderId(id); setCart([]); setTrackStage(0); setScreen('track'); }}/>;
+      } else if (screen === 'track') {
+        body = <CustomerTrack stage={trackStage} orderId={myOrderId}/>;
+      }
+      const showTabs = !hideTabs && screen !== 'product';
+
+      return (
+        <IOSDevice width={390} height={760}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--paper)' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>{body}</div>
+            {showTabs && <RKTabBar active={screen === 'cart' ? 'cart' : screen === 'track' ? 'orders' : 'home'} cartCount={cartCount} onNav={goNav}/>}
+          </div>
+        </IOSDevice>
+      );
+    }
+
+    function CustomerTrack({ stage, orderId }) {
+      const stageLabels = ['Received', 'Picking your basket', 'Out for delivery', 'Delivered'];
+      return (
+        <div style={{ background: 'var(--paper)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '54px 20px 16px', background: 'var(--ink)', color: 'var(--paper)' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.18em', color: '#d9b13a', textTransform: 'uppercase' }}>Order · {orderId || 'pending'}</div>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 28, marginTop: 4 }}>{stageLabels[stage] || stageLabels[0]}<em style={{ color: '#d9b13a', fontStyle: 'italic' }}>.</em></div>
+          </div>
+          {stage >= 2 ? <FakeMap customer/> : (
+            <div style={{ height: 220, background: 'var(--paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontFamily: 'DM Serif Display', fontStyle: 'italic' }}>
+              {stage === 0 && 'Waiting for the picker to start…'}
+              {stage === 1 && 'Picker is in the aisles right now.'}
+            </div>
+          )}
+          <div style={{ padding: 18, flex: 1 }}>
+            {[0,1,2,3].map(s => (
+              <div key={s} style={{ display: 'flex', gap: 12, padding: '10px 0', alignItems: 'center', opacity: stage >= s ? 1 : 0.35 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: stage >= s ? 'var(--olive)' : 'var(--paper-3)', color: stage >= s ? '#fff8ec' : 'var(--ink-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>{stage > s ? '✓' : s + 1}</div>
+                <div style={{ fontFamily: 'DM Serif Display', fontSize: 16 }}>{stageLabels[s]}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ─── Tabs ────────────────────────────
+    function CustomerTab() {
+      const { pushLog } = useTester();
+      return (
+        <div className="stage">
+          <div className="device-wrap"><CustomerDevice/></div>
+          <SidePanel role="Customer">
+            <Hint>Browse the Market, add items, checkout. Then switch to <b>Picker</b> tab to fulfill the order.</Hint>
+          </SidePanel>
+        </div>
+      );
+    }
+
+    function PickerTab() {
+      const { orders, activeOrderId, setActiveOrderId, advance, updateOrder, removeOrder, pushLog } = useTester();
+      const pending = orders.filter(o => o.stage < 2);
+      const order = orders.find(o => o.id === activeOrderId) || pending[0];
+
+      React.useEffect(() => {
+        if (!activeOrderId && pending[0]) setActiveOrderId(pending[0].id);
+      }, [pending.length]);
+
+      if (!order) {
+        return (
+          <div className="stage">
+            <div className="device-wrap">
+              <IOSDevice width={390} height={760}>
+                <div style={{ background: 'var(--paper)', height: '100%', padding: 40, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative' }}>
+                  <div style={{ fontFamily: 'DM Serif Display', fontSize: 28 }}>No <em style={{ color: 'var(--olive)', fontStyle: 'italic' }}>orders.</em></div>
+                  <div style={{ marginTop: 8, color: 'var(--ink-3)', fontSize: 14 }}>Place one as the customer to see it here.</div>
+                  <ChatBubble role="picker"/>
+                </div>
+              </IOSDevice>
+            </div>
+            <SidePanel role="Picker"><Hint>Idle — waiting on a customer order.</Hint></SidePanel>
+          </div>
+        );
+      }
+
+      const togglePicked = (lineId, val) => updateOrder(order.id, { picked: { ...order.picked, [lineId]: val } });
+
+      return (
+        <div className="stage">
+          <div className="device-wrap">
+            <IOSDevice width={390} height={760}>
+              <PickerApp order={order}
+                onPicked={togglePicked}
+                onAdvance={() => advance(order.id)}
+                onCancel={() => { pushLog(`${order.id} cancelled`, 'warn'); removeOrder(order.id); }}
+                onRestart={() => { updateOrder(order.id, { picked: {}, stage: 0 }); pushLog(`${order.id} restarted`, 'warn'); }}
+                pushLog={pushLog}/>
+            </IOSDevice>
+          </div>
+          <SidePanel role="Picker">
+            <div className="lab">Active</div>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, marginTop: 2 }}>#{order.id}</div>
+            {pending.length > 1 && (
+              <>
+                <div className="lab" style={{ marginTop: 14 }}>Queue</div>
+                {pending.map(o => (
+                  <div key={o.id} className={'order-card' + (o.id === order.id ? ' on' : '')} onClick={() => setActiveOrderId(o.id)}>
+                    <b>#{o.id}</b> · {o.lines.length} lines
+                  </div>
+                ))}
+              </>
+            )}
+            <Hint>Try the <b>☰</b> menu, the <b>⚠</b> damage report, or skip a line with <b>↷</b>.</Hint>
+          </SidePanel>
+        </div>
+      );
+    }
+
+    function StockTab() {
+      const { orders, log } = useTester();
+      const [items, setItems] = React.useState([]);
+      const [low, setLow] = React.useState([]);
+      React.useEffect(() => {
+        const refresh = async () => { setItems(await window.STOCK_API.list()); setLow(await window.STOCK_API.lowStock()); };
+        refresh(); const t = setInterval(refresh, 1500); return () => clearInterval(t);
+      }, []);
+      return (
+        <div className="stage">
+          <div className="device-wrap"><IOSDevice width={390} height={760}><StockHandlerApp/></IOSDevice></div>
+          <SidePanel role="Stock Handler">
+            <div className="lab">Live activity</div>
+            <div className="live-log">
+              {log.map((e, i) => <div key={i} className={e.k}><span className="t">{e.t}</span> &nbsp; {e.m}</div>)}
+            </div>
+            <div style={{ display: 'flex', gap: 14, marginTop: 14 }}>
+              <Stat n={orders.length} l="Orders"/>
+              <Stat n={items.length} l="SKUs"/>
+              <Stat n={low.length} l="Low" alert={low.length > 0}/>
+            </div>
+            <Hint>Tap the camera viewport to simulate a scan, or paste an EAN. Brain auto-categorizes the aisle.</Hint>
+          </SidePanel>
+        </div>
+      );
+    }
+
+    function DriverTab() {
+      const { orders, advance, pushLog } = useTester();
+      return (
+        <div className="stage">
+          <div className="device-wrap">
+            <IOSDevice width={390} height={760}>
+              <DriverApp orders={orders} onAdvance={(id) => { advance(id); pushLog(`${id} delivered ✓`, 'ok'); }}/>
+            </IOSDevice>
+          </div>
+          <SidePanel role="Driver">
+            <div className="lab">Drops</div>
+            {orders.filter(o => o.stage === 2).length === 0 && (
+              <div style={{ fontFamily: 'DM Serif Display', fontStyle: 'italic', color: 'var(--ink-3)', marginTop: 4 }}>None yet — picker hasn't handed off.</div>
+            )}
+            {orders.filter(o => o.stage === 2).map(o => (
+              <div key={o.id} className="order-card on">
+                <b>#{o.id}</b> · {o.lines.length} items · 21 Mott St
+              </div>
+            ))}
+            <Hint>The driver gets the order once the picker taps <b>Hand to driver →</b>.</Hint>
+          </SidePanel>
+        </div>
+      );
+    }
+
+    function SplitTab() {
+      const { orders, activeOrderId, setActiveOrderId, advance, updateOrder, pushLog } = useTester();
+      const order = orders.find(o => o.id === activeOrderId) || orders[orders.length - 1];
+      const togglePicked = (lineId, val) => order && updateOrder(order.id, { picked: { ...order.picked, [lineId]: val } });
+
+      return (
+        <div className="stage split4">
+          <div>
+            <div className="role-cap">Customer<em>.</em></div>
+            <div className="device-wrap"><CustomerDevice/></div>
+          </div>
+          <div>
+            <div className="role-cap">Picker<em>.</em></div>
+            <div className="device-wrap">
+              <IOSDevice width={390} height={760}>
+                {order ? (
+                  <PickerApp order={order} onPicked={togglePicked}
+                    onAdvance={() => advance(order.id)}
+                    onCancel={() => {}} onRestart={() => updateOrder(order.id, { picked: {}, stage: 0 })}
+                    pushLog={pushLog}/>
+                ) : <EmptyDevice label="Waiting for order"/>}
+              </IOSDevice>
+            </div>
+          </div>
+          <div>
+            <div className="role-cap">Stock<em>.</em></div>
+            <div className="device-wrap"><IOSDevice width={390} height={760}><StockHandlerApp/></IOSDevice></div>
+          </div>
+          <div>
+            <div className="role-cap">Driver<em>.</em></div>
+            <div className="device-wrap">
+              <IOSDevice width={390} height={760}>
+                <DriverApp orders={orders} onAdvance={(id) => { advance(id); pushLog(`${id} delivered`, 'ok'); }}/>
+              </IOSDevice>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    function EmptyDevice({ label }) {
+      return <div style={{ background: 'var(--paper)', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontFamily: 'DM Serif Display', fontStyle: 'italic' }}>{label}</div>;
+    }
+
+    // ─── Shared bits ────────────────────────────
+    function SidePanel({ role, children }) {
+      return (
+        <div className="side">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <h2>The <em>{role}</em>.</h2>
+            <span className="pill"><span className="dot"/> live</span>
+          </div>
+          <div className="rk-rule" style={{ margin: '14px 0' }}/>
+          {children}
+        </div>
+      );
+    }
+    function Hint({ children }) {
+      return (
+        <div style={{ marginTop: 18, padding: 12, background: 'var(--paper-2)', borderRadius: 8, fontFamily: 'DM Serif Display', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+          {children}
+        </div>
+      );
+    }
+    function Stat({ n, l, alert }) {
+      return (
+        <div>
+          <div style={{ fontFamily: 'DM Serif Display', fontSize: 26, color: alert ? 'var(--persimmon)' : 'var(--olive)' }}>{n}</div>
+          <div className="lab">{l}</div>
+        </div>
+      );
+    }
+
+    // ─── Shell ────────────────────────────
+    function Shell() {
+      const [tab, setTab] = React.useState('customer');
+      const [ollamaUrl, setOllamaUrl] = React.useState(window.BRAIN.ollamaUrl);
+      const [backend, setBackend] = React.useState(window.BRAIN.backend);
+      const setBackendBoth = (v) => { window.BRAIN.backend = v; setBackend(v); };
+      const setUrlBoth = (v) => { window.BRAIN.ollamaUrl = v; setOllamaUrl(v); };
+
+      return (
+        <TesterProvider>
+          <div className="tester-shell">
+            <div className="tester-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ fontFamily: 'DM Serif Display', fontSize: 22 }}>Rocky&rsquo;s <em style={{ color: 'var(--olive)', fontStyle: 'italic' }}>Tester.</em></div>
+                <span className="pill"><span className="dot"/> mock backend</span>
+              </div>
+              <div className="tabs">
+                {[
+                  ['customer', 'Customer'],
+                  ['picker',   'Picker'],
+                  ['stock',    'Stock Handler'],
+                  ['driver',   'Driver'],
+                  ['split',    '⛶ All four'],
+                ].map(([k, l]) => (
+                  <button key={k} className={'tab ' + (tab === k ? 'on' : '')} onClick={() => setTab(k)}>{l}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select value={backend} onChange={e => setBackendBoth(e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--paper-3)', fontFamily: 'Geist', fontSize: 12, background: 'var(--paper)' }}>
+                  <option value="claude">Brain: Claude</option>
+                  <option value="ollama">Brain: Ollama qwen3:4b</option>
+                </select>
+                {backend === 'ollama' && (
+                  <input value={ollamaUrl} onChange={e => setUrlBoth(e.target.value)}
+                    placeholder="http://your-droplet:11434"
+                    style={{ width: 200, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--paper-3)', fontFamily: 'Geist', fontSize: 12 }}/>
+                )}
+              </div>
+            </div>
+
+            {tab === 'customer' && <CustomerTab/>}
+            {tab === 'picker'   && <PickerTab/>}
+            {tab === 'stock'    && <StockTab/>}
+            {tab === 'driver'   && <DriverTab/>}
+            {tab === 'split'    && <SplitTab/>}
+          </div>
+        </TesterProvider>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Shell/>);
+  </script>
+</body>
+</html>

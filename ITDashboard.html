@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>IT · White-label config</title>
+  <meta name="theme-color" content="#1d1a14"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html,body { margin:0; padding:0; min-height:100vh; background:var(--paper-2); font-family:Geist,system-ui,sans-serif; color:var(--ink); }
+    .wrap { max-width:1100px; margin:0 auto; padding:22px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    @media (max-width:800px) { .grid { grid-template-columns:1fr; } }
+    .card { background:var(--paper); border-radius:14px; padding:24px; box-sizing:border-box; }
+    .card h3 { font-family:'DM Serif Display'; font-size:24px; margin:0 0 4px; font-weight:400; }
+    .card h3 em { color:var(--olive); font-style:italic; }
+    .lab { font-size:10px; letter-spacing:0.16em; color:var(--ink-3); text-transform:uppercase; margin-top:14px; margin-bottom:6px; display:block; }
+    input,textarea { width:100%; box-sizing:border-box; font-family:Geist; padding:9px 11px; border:1px solid var(--paper-3); border-radius:6px; background:var(--paper); font-size:13px; }
+    textarea { resize:vertical; min-height:60px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; }
+    button { padding:10px 16px; background:var(--ink); color:var(--paper); border:none; border-radius:999px; cursor:pointer; font-size:12px; font-family:Geist; }
+    button.ghost { background:transparent; color:var(--ink); border:1px solid var(--paper-3); }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .swatches { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:6px; }
+    .swatch { aspect-ratio:1; border-radius:6px; cursor:pointer; border:2px solid transparent; }
+    .swatch.on { border-color:var(--ink); }
+    .preview-card { background:var(--ink); color:var(--paper); padding:24px; border-radius:14px; margin-top:14px; }
+    .preview-card .pmark { font-family:'DM Serif Display'; font-size:34px; font-weight:400; line-height:1.1; }
+    .preview-card .pmark em { font-style:italic; }
+    .pulse { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+    .ok { background:#7a8e60; box-shadow:0 0 0 0 #7a8e60; animation:p 1.6s infinite; }
+    .warn { background:#d97a2c; }
+    @keyframes p { 70% { box-shadow:0 0 0 6px transparent; } 100% { box-shadow:0 0 0 0 transparent; } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="rk-config.js"></script>
+  <script src="rk-supabase.js"></script>
+  <script src="rk-auth.js"></script>
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script src="rk-store.js"></script>
+</head>
+<body>
+  <script type="text/babel" src="rk-role-page.jsx"></script>
+  <script type="text/babel">
+    const ACCENTS = ['#5a6b46', '#a64b2a', '#3a4a5a', '#6b3a5a', '#5a3a2a', '#2a3a2a', '#d9b13a', '#1f3923'];
+
+    function ITDash() {
+      const [cfg, setCfg] = React.useState(() => RK_CONFIG.load());
+      const [pingClaude, setPingClaude] = React.useState({ status: 'idle', ms: 0 });
+      const [pingOllama, setPingOllama] = React.useState({ status: 'idle', ms: 0 });
+      const setK = (k, v) => setCfg(c => ({ ...c, [k]: v }));
+      const save = () => { RK_CONFIG.set(cfg); alert('Saved. Reload other pages to see changes.'); };
+      const resetCfg = () => { if (confirm('Reset all config to defaults?')) { RK_CONFIG.reset(); setCfg(RK_CONFIG.load()); } };
+
+      const testClaude = async () => {
+        setPingClaude({ status: 'pinging', ms: 0 });
+        const t0 = Date.now();
+        try {
+          const r = await window.claude.complete('Reply with the single word: ok');
+          setPingClaude({ status: r.toLowerCase().includes('ok') ? 'ok' : 'fail', ms: Date.now() - t0, response: r });
+        } catch (e) { setPingClaude({ status: 'fail', ms: Date.now() - t0, error: e.message }); }
+      };
+      const testOllama = async () => {
+        setPingOllama({ status: 'pinging', ms: 0 });
+        const t0 = Date.now();
+        try {
+          const url = (cfg.ollama_url || '').replace(/\/$/, '');
+          const r = await fetch(`${url}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: cfg.ollama_model || 'qwen3:4b', prompt: 'Reply with the single word: ok', stream: false }) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const j = await r.json();
+          setPingOllama({ status: (j.response || '').toLowerCase().includes('ok') ? 'ok' : 'fail', ms: Date.now() - t0, response: j.response });
+        } catch (e) { setPingOllama({ status: 'fail', ms: Date.now() - t0, error: e.message }); }
+      };
+
+      const stat = (p) => p.status === 'idle' ? '—' : p.status === 'pinging' ? '…' : p.status === 'ok' ? `${p.ms}ms ✓` : `failed (${p.ms}ms)`;
+
+      return (
+        <>
+          <RKRoleHeader pageEmoji="⚙" pageColor="var(--ink)"/>
+          <div className="wrap">
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div className="lab">White-label · platform config</div>
+              <h3>Make this <em>yours.</em></h3>
+              <div style={{ color: 'var(--ink-3)', fontSize: 13, marginTop: 4 }}>Brand, copy, endpoints — applied across customer / picker / driver / stock / manager pages.</div>
+            </div>
+
+            <div className="grid">
+              <div className="card">
+                <h3>Brand<em>.</em></h3>
+                <span className="lab">Brand name</span>
+                <input value={cfg.brand_name} onChange={e => setK('brand_name', e.target.value)}/>
+                <span className="lab">Tagline</span>
+                <input value={cfg.brand_tagline || ''} onChange={e => setK('brand_tagline', e.target.value)}/>
+                <span className="lab">Accent color (olive)</span>
+                <div className="swatches">
+                  {ACCENTS.map(c => <div key={c} className={`swatch ${cfg.brand_color_olive === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setK('brand_color_olive', c)}/>)}
+                </div>
+
+                <div className="preview-card" style={{ background: cfg.brand_color_ink || 'var(--ink)' }}>
+                  <div className="pmark">{cfg.brand_name || 'Brand'}<em style={{ color: cfg.brand_color_olive || '#d9b13a' }}>.</em></div>
+                  <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>{cfg.brand_tagline || 'Your tagline.'}</div>
+                </div>
+              </div>
+
+              <div className="card">
+                <h3>Shop & <em>delivery.</em></h3>
+                <span className="lab">Shop address</span>
+                <input value={cfg.shop_address || ''} onChange={e => setK('shop_address', e.target.value)}/>
+                <div className="row">
+                  <div style={{ flex: 1 }}><span className="lab">Lat</span><input type="number" step="0.0001" value={cfg.shop_lat} onChange={e => setK('shop_lat', parseFloat(e.target.value))}/></div>
+                  <div style={{ flex: 1 }}><span className="lab">Lng</span><input type="number" step="0.0001" value={cfg.shop_lng} onChange={e => setK('shop_lng', parseFloat(e.target.value))}/></div>
+                </div>
+                <span className="lab">Delivery fee</span>
+                <input type="number" step="0.05" value={cfg.delivery_fee} onChange={e => setK('delivery_fee', parseFloat(e.target.value))}/>
+                <span className="lab">Currency symbol</span>
+                <input value={cfg.currency_symbol || '£'} onChange={e => setK('currency_symbol', e.target.value)}/>
+              </div>
+
+              <div className="card">
+                <h3>AI <em>brain.</em></h3>
+                <span className="lab">Provider</span>
+                <div className="row">
+                  {['claude', 'ollama'].map(p => (
+                    <button key={p} className={cfg.ai_backend === p ? '' : 'ghost'} onClick={() => setK('ai_backend', p)}>{p === 'claude' ? 'Claude (built-in)' : 'Ollama (self-hosted)'}</button>
+                  ))}
+                </div>
+                {cfg.ai_backend === 'ollama' && (
+                  <>
+                    <span className="lab">Ollama URL</span>
+                    <input value={cfg.ollama_url || ''} onChange={e => setK('ollama_url', e.target.value)} placeholder="http://192.0.2.10:11434"/>
+                    <span className="lab">Model</span>
+                    <input value={cfg.ollama_model || 'qwen3:4b'} onChange={e => setK('ollama_model', e.target.value)}/>
+                  </>
+                )}
+                <div className="row" style={{ marginTop: 14 }}>
+                  <button className="ghost" onClick={testClaude}><span className={`pulse ${pingClaude.status === 'ok' ? 'ok' : pingClaude.status === 'fail' ? 'warn' : ''}`}/>Ping Claude · {stat(pingClaude)}</button>
+                  {cfg.ai_backend === 'ollama' && <button className="ghost" onClick={testOllama}><span className={`pulse ${pingOllama.status === 'ok' ? 'ok' : pingOllama.status === 'fail' ? 'warn' : ''}`}/>Ping Ollama · {stat(pingOllama)}</button>}
+                </div>
+              </div>
+
+              <div className="card">
+                <h3>Domain & <em>checkout.</em></h3>
+                <span className="lab">Domain</span>
+                <input value={cfg.domain || ''} onChange={e => setK('domain', e.target.value)}/>
+                <span className="lab">Stripe publishable key</span>
+                <input value={cfg.stripe_pk || ''} onChange={e => setK('stripe_pk', e.target.value)}/>
+                <span className="lab">Free delivery over (£)</span>
+                <input type="number" value={cfg.free_delivery_over || 0} onChange={e => setK('free_delivery_over', parseFloat(e.target.value))}/>
+                <span className="lab">Tax rate (0–1)</span>
+                <input type="number" step="0.01" value={cfg.tax_rate || 0} onChange={e => setK('tax_rate', parseFloat(e.target.value))}/>
+              </div>
+            </div>
+
+            <div className="card" style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div className="lab" style={{ marginTop: 0 }}>Save bar</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Changes are local to this browser (demo). Production wires to your backend.</div>
+              </div>
+              <div className="row">
+                <button className="ghost" onClick={resetCfg}>Reset to defaults</button>
+                <button onClick={save}>Save changes</button>
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    ReactDOM.createRoot(document.body.appendChild(document.createElement('div'))).render(<ITDash/>);
+  </script>
+</body>
+</html>

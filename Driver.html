@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Driver</title>
+  <meta name="theme-color" content="#1d1a14"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html,body { margin:0; padding:0; min-height:100vh; background:#2a2419; font-family:Geist,system-ui,sans-serif; }
+    .stage { max-width:1300px; margin:0 auto; padding:18px; display:grid; grid-template-columns:420px 1fr; gap:24px; align-items:start; }
+    @media (max-width:900px) { .stage { grid-template-columns:1fr; } }
+    .device-wrap { display:flex; justify-content:center; }
+    .side { background:var(--paper); border-radius:14px; padding:22px; min-height:760px; box-sizing:border-box; }
+    .side h2 { font-family:'DM Serif Display'; font-size:24px; margin:0; font-weight:400; }
+    .side h2 em { color:var(--olive); font-style:italic; }
+    .lab { font-size:10px; letter-spacing:0.16em; color:var(--ink-3); text-transform:uppercase; }
+    .order-card { padding:14px; border:1px solid var(--paper-3); border-radius:10px; margin-top:8px; cursor:pointer; background:var(--paper); }
+    .order-card.on { border-color:var(--ink); background:var(--paper-2); }
+    .order-card.delivered { opacity:0.5; }
+    .map-large { background:var(--paper); border-radius:14px; padding:22px; min-height:520px; }
+    #map-container { height:480px; border-radius:10px; overflow:hidden; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="rk-config.js"></script>
+  <script src="rk-supabase.js"></script>
+  <script src="rk-auth.js"></script>
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script src="rk-store.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="rk-shared.jsx"></script>
+  <script type="text/babel" src="rk-home.jsx"></script>
+  <script type="text/babel" src="rk-home-stock.jsx"></script>
+  <script type="text/babel" src="rk-screens.jsx"></script>
+  <script type="text/babel" src="rk-map.jsx"></script>
+  <script type="text/babel" src="rk-chat.jsx"></script>
+  <script type="text/babel" src="rk-roles.jsx"></script>
+  <script type="text/babel" src="rk-role-page.jsx"></script>
+  <script type="text/babel">
+    function DriverPage() {
+      const [orders] = useOrders();
+      const drops = orders.filter(o => o.stage === 2 && !o.cancelled);
+      const completed = orders.filter(o => o.stage === 3);
+      const cfg = RK_CONFIG.load();
+
+      const advance = (id) => {
+        window.RK_STORE.updateOrder(id, { stage: 3, deliveredAt: Date.now() });
+        if (window.STAFF_CHAT) window.STAFF_CHAT.send('driver', 'Sam (Driver)', `✓ #${id} delivered.`);
+      };
+
+      // Build a multi-stop polyline for the side map
+      const allStops = drops.map(o => ({ lat: o.lat, lng: o.lng, label: o.id }));
+
+      return (
+        <>
+          <RKRoleHeader pageEmoji="🚐" pageColor="var(--ink)"/>
+          <div className="stage">
+            <div className="device-wrap">
+              <IOSDevice width={390} height={780}>
+                <DriverApp orders={orders} onAdvance={advance}/>
+              </IOSDevice>
+            </div>
+            <div>
+              <div className="map-large" style={{ marginBottom: 14 }}>
+                <div className="lab">Today's route</div>
+                <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, fontWeight: 400, marginTop: 2 }}>{drops.length} drop{drops.length !== 1 ? 's' : ''} · {completed.length} completed<em style={{ color: 'var(--olive)', fontStyle: 'italic' }}>.</em></div>
+                <div className="rk-rule" style={{ margin: '14px 0' }}/>
+                <div id="map-container">
+                  {drops[0] ? <RKMap shop={{ lat: cfg.shop_lat, lng: cfg.shop_lng }} dest={{ lat: drops[0].lat, lng: drops[0].lng }} stage={2} height={480}/>
+                    : <div style={{ height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper-2)', borderRadius: 10, color: 'var(--ink-3)', fontFamily: 'DM Serif Display', fontStyle: 'italic' }}>No active drops yet.</div>}
+                </div>
+              </div>
+              <div className="side">
+                <div className="lab">Drops queue</div>
+                {drops.length === 0 && <div style={{ marginTop: 10, color: 'var(--ink-3)', fontFamily: 'DM Serif Display', fontStyle: 'italic' }}>Waiting for a hand-off from the picker.</div>}
+                {drops.map(o => (
+                  <div key={o.id} className="order-card on">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontFamily: 'DM Serif Display', fontSize: 18 }}>#{o.id}</div>
+                        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{o.address}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>{o.lines.length} items · {o.customer?.name || 'Customer'}</div>
+                      </div>
+                      <button onClick={() => advance(o.id)} style={{ padding: '10px 18px', border: 'none', background: 'var(--persimmon)', color: '#fff8ec', borderRadius: 999, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Mark delivered</button>
+                    </div>
+                  </div>
+                ))}
+                {completed.length > 0 && (
+                  <>
+                    <div className="lab" style={{ marginTop: 18 }}>Completed today</div>
+                    {completed.slice(-3).reverse().map(o => (
+                      <div key={o.id} className="order-card delivered">
+                        <b>#{o.id}</b> · ✓ delivered · {o.address}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    ReactDOM.createRoot(document.getElementById('root')).render(<DriverPage/>);
+  </script>
+</body>
+</html>

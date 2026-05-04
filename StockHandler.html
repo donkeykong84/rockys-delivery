@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Stock Handler</title>
+  <meta name="theme-color" content="#1d1a14"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html,body { margin:0; padding:0; min-height:100vh; background:#2a2419; font-family:Geist,system-ui,sans-serif; }
+    .stage { max-width:1300px; margin:0 auto; padding:18px; display:grid; grid-template-columns:420px 1fr; gap:24px; align-items:start; }
+    @media (max-width:900px) { .stage { grid-template-columns:1fr; } }
+    .device-wrap { display:flex; justify-content:center; }
+    .side { background:var(--paper); border-radius:14px; padding:22px; min-height:760px; box-sizing:border-box; }
+    .side h2 { font-family:'DM Serif Display'; font-size:24px; margin:0; font-weight:400; }
+    .side h2 em { color:var(--olive); font-style:italic; }
+    .lab { font-size:10px; letter-spacing:0.16em; color:var(--ink-3); text-transform:uppercase; }
+    .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:6px; }
+    .stat { padding:14px; background:var(--paper-2); border-radius:10px; }
+    .stat .n { font-family:'DM Serif Display'; font-size:32px; font-weight:400; }
+    table { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+    table th { text-align:left; padding:8px 6px; border-bottom:1px solid var(--paper-3); font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-3); }
+    table td { padding:8px 6px; border-bottom:1px solid var(--paper-3); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="rk-config.js"></script>
+  <script src="rk-supabase.js"></script>
+  <script src="rk-auth.js"></script>
+  <script src="rk-stock.js"></script>
+  <script src="rk-brain.js"></script>
+  <script src="rk-store.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="rk-shared.jsx"></script>
+  <script type="text/babel" src="rk-home.jsx"></script>
+  <script type="text/babel" src="rk-home-stock.jsx"></script>
+  <script type="text/babel" src="rk-screens.jsx"></script>
+  <script type="text/babel" src="rk-map.jsx"></script>
+  <script type="text/babel" src="rk-chat.jsx"></script>
+  <script type="text/babel" src="rk-roles.jsx"></script>
+  <script type="text/babel" src="rk-role-page.jsx"></script>
+  <script type="text/babel">
+    function StockPage() {
+      const [orders] = useOrders();
+      const [items, setItems] = React.useState([]);
+      const [low, setLow] = React.useState([]);
+      const refresh = async () => { setItems(await window.STOCK_API.list()); setLow(await window.STOCK_API.lowStock()); };
+      React.useEffect(() => { refresh(); const t = setInterval(refresh, 1500); return () => clearInterval(t); }, []);
+      const todayOrders = orders.filter(o => Date.now() - o.placedAt < 86400000);
+      return (
+        <>
+          <RKRoleHeader pageEmoji="📦" pageColor="var(--ink)"/>
+          <div className="stage">
+            <div className="device-wrap">
+              <IOSDevice width={390} height={780}><StockHandlerApp/></IOSDevice>
+            </div>
+            <div className="side">
+              <h2>The <em>stock room.</em></h2>
+              <div className="rk-rule" style={{ margin: '14px 0' }}/>
+              <div className="lab">Today</div>
+              <div className="stat-grid">
+                <div className="stat"><div className="n" style={{ color: 'var(--olive)' }}>{todayOrders.length}</div><div className="lab">Orders</div></div>
+                <div className="stat"><div className="n">{items.length}</div><div className="lab">SKUs</div></div>
+                <div className="stat"><div className="n" style={{ color: low.length ? 'var(--persimmon)' : 'var(--ink)' }}>{low.length}</div><div className="lab">Low stock</div></div>
+              </div>
+
+              <div className="lab" style={{ marginTop: 18 }}>Low-stock list</div>
+              {low.length === 0 && <div style={{ padding: 14, marginTop: 8, background: 'var(--paper-2)', borderRadius: 8, fontFamily: 'DM Serif Display', fontStyle: 'italic', color: 'var(--ink-3)' }}>All shelves are full.</div>}
+              {low.length > 0 && (
+                <table>
+                  <thead><tr><th>Item</th><th>Aisle</th><th style={{ textAlign: 'right' }}>Qty</th></tr></thead>
+                  <tbody>{low.slice(0, 10).map(it => (
+                    <tr key={it.id}>
+                      <td>{it.name}</td>
+                      <td>{it.aisle}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--persimmon)', fontWeight: 600 }}>{it.qty}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </>
+      );
+    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    ReactDOM.createRoot(document.getElementById('root')).render(<StockPage/>);
+  </script>
+</body>
+</html>

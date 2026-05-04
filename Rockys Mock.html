@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rocky's — Testable Mock</title>
+  <link rel="stylesheet" href="brand.css"/>
+  <style>
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Geist', system-ui, sans-serif; }
+    #root { width: 100vw; min-height: 100vh; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="rk-shared.jsx"></script>
+  <script type="text/babel" src="rk-backend.jsx"></script>
+  <script type="text/babel" src="rk-owner-picker.jsx"></script>
+  <script type="text/babel" src="rk-flow.jsx"></script>
+
+  <script type="text/babel">
+    // ─── Customer browse from real stock ────────────────────────
+    function RKCustomerLive() {
+      const [items, setItems] = React.useState([]);
+      const [cart, setCart] = React.useState([]);
+      const [filter, setFilter] = React.useState('all');
+      const [aisles, setAisles] = React.useState([]);
+
+      React.useEffect(() => {
+        const refresh = async () => {
+          setItems(await window.RKApi.listItems());
+          setAisles(await window.RKApi.listAisles());
+        };
+        refresh();
+        const off = window.RKApi.on('stock-changed', refresh);
+        const off2 = window.RKApi.on('items-changed', refresh);
+        return () => { off(); off2(); };
+      }, []);
+
+      const cartCount = cart.reduce((s, l) => s + l.qty, 0);
+      const addCart = (it) => {
+        if (it.stock <= 0) return;
+        setCart(c => {
+          const i = c.findIndex(l => l.item.id === it.id);
+          if (i >= 0) { const n = [...c]; n[i] = { ...n[i], qty: n[i].qty + 1 }; return n; }
+          return [...c, { item: it, qty: 1 }];
+        });
+      };
+
+      const filtered = filter === 'all' ? items : items.filter(i => i.aisle === filter);
+
+      return (
+        <div style={{ background: 'var(--paper)', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '52px 22px 0' }}>
+            <div className="rk-eyebrow">Rocky&rsquo;s · live shop</div>
+            <div style={{ fontFamily: 'var(--display)', fontSize: 36, lineHeight: 0.95, color: 'var(--ink)', marginTop: 6, fontWeight: 400 }}>
+              Today at <span style={{ fontStyle: 'italic', color: 'var(--olive)' }}>Rocky&rsquo;s.</span>
+            </div>
+            <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
+              {items.length} items in stock
+            </div>
+            <div className="rk-rule" style={{ marginTop: 12 }}/>
+            <div style={{ display: 'flex', gap: 6, padding: '12px 0 4px', overflowX: 'auto' }}>
+              {[{ id: 'all', name: 'All' }, ...aisles].map(a => (
+                <button key={a.id} onClick={() => setFilter(a.id)}
+                  style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 999,
+                    background: filter === a.id ? 'var(--ink)' : 'var(--paper-2)',
+                    color: filter === a.id ? 'var(--paper)' : 'var(--ink)',
+                    border: 'none', fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 500,
+                    cursor: 'pointer' }}>{a.name}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 22px 80px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {filtered.map(it => <LiveCard key={it.id} item={it} onAdd={() => addCart(it)}/>)}
+            </div>
+            {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 30, fontFamily: 'var(--serif)', fontStyle: 'italic', color: 'var(--ink-3)' }}>Nothing in this aisle yet.</div>}
+          </div>
+          {cartCount > 0 && (
+            <div style={{ position: 'absolute', left: 18, right: 18, bottom: 28, background: 'var(--ink)', color: 'var(--paper)', borderRadius: 999, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 600 }}>Basket · {cartCount} item{cartCount !== 1 ? 's' : ''}</span>
+              <span style={{ fontFamily: 'var(--display)', fontSize: 18 }}>${cart.reduce((s, l) => s + l.qty * l.item.price, 0).toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function LiveCard({ item, onAdd }) {
+      const out = item.stock <= 0;
+      const low = !out && item.stock <= item.lowAt;
+      return (
+        <div style={{ background: 'var(--paper-2)', borderRadius: 'var(--r-md)', padding: 10, position: 'relative', opacity: out ? 0.55 : 1 }}>
+          <div style={{ height: 90, background: 'var(--paper)', borderRadius: 'var(--r-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+            {item.image
+              ? <img src={item.image} alt="" style={{ maxHeight: '90%', maxWidth: '90%', objectFit: 'contain', mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display='none'; }}/>
+              : <RKIcon k="basket" size={26} color="var(--ink-4)"/>}
+            {out && <div style={{ position: 'absolute', top: 6, left: 6, background: 'var(--persimmon)', color: '#fff8ec', fontFamily: 'var(--sans)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 6px', borderRadius: 3, textTransform: 'uppercase' }}>Out</div>}
+            {low && <div style={{ position: 'absolute', top: 6, left: 6, background: 'var(--gold)', color: 'var(--ink)', fontFamily: 'var(--sans)', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 6px', borderRadius: 3, textTransform: 'uppercase' }}>Only {item.stock}</div>}
+          </div>
+          <div style={{ fontFamily: 'var(--display)', fontSize: 13, color: 'var(--ink)', marginTop: 6, lineHeight: 1.15, minHeight: 30 }}>{item.name}</div>
+          <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 10, color: 'var(--ink-3)' }}>{item.size}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+            <div style={{ fontFamily: 'var(--display)', fontSize: 16, color: 'var(--ink)' }}>${item.price.toFixed(2)}</div>
+            <button onClick={onAdd} disabled={out} style={{ width: 28, height: 28, borderRadius: '50%', background: out ? 'var(--paper-3)' : 'var(--ink)', border: 'none', cursor: out ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <RKIcon k="plus" size={14} color={out ? 'var(--ink-3)' : 'var(--paper)'} strokeWidth={2}/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function Phone({ children }) {
+      return <IOSDevice width={390} height={760}>{children}</IOSDevice>;
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="flow" title="Architecture" subtitle="How customer · picker · driver · shopkeeper all hand off through Ollama">
+            <DCArtboard id="diagram" label="System flow" width={1200} height={720}>
+              <RKFlow/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="testable" title="Testable mock — fully wired" subtitle="Stock JSON ↔ owner ↔ customer ↔ picker. LLM calls live (Open Food Facts + window.claude). Add items in Owner, watch them appear for Customer.">
+            <DCArtboard id="owner" label="01 · Shopkeeper · stock + scan" width={390} height={760}>
+              <Phone><RKOwner/></Phone>
+            </DCArtboard>
+            <DCArtboard id="customer-live" label="02 · Customer · live stock" width={390} height={760}>
+              <Phone><RKCustomerLive/></Phone>
+            </DCArtboard>
+            <DCArtboard id="picker" label="03 · Picker · AI-organized list" width={390} height={760}>
+              <Phone><RKPicker/></Phone>
+            </DCArtboard>
+          </DCSection>
+
+          <DCPostIt x={20} y={40} rotate={-2}>
+            <b>Test the loop:</b><br/>
+            1. Open <b>Shopkeeper</b>, tap orange scan FAB<br/>
+            2. Tap a barcode chip → Open Food Facts fetches photo + name → LLM picks aisle<br/>
+            3. Add price + qty → save<br/>
+            4. New item shows up in <b>Customer</b> instantly (events fire across artboards)<br/>
+            5. In <b>Picker</b>, items are grouped by aisle order. Tap "Out · Sub" on Fanta to see the AI substitution.
+          </DCPostIt>
+
+          <DCPostIt x={760} y={40} rotate={2}>
+            <b>To wire your droplet</b>:<br/>
+            In <code>rk-backend.jsx</code>, the <code>askLLM()</code> function uses <code>window.claude</code>. Replace its body with the <code>_askOllama()</code> helper (same file, line ~75) and point it at <code>http://your-droplet:11434</code>. All call sites (substitution, categorization, route) keep working.
+          </DCPostIt>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

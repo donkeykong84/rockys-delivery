@@ -1,0 +1,36 @@
+{
+  "name": "Rocky's Delivery",
+  "short_name": "Rocky's",
+  "description": "Your corner shop, delivered. Order groceries online with fast local delivery.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1d1a14",
+  "theme_color": "#1d1a14",
+  "categories": ["shopping", "food"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Shop",
+      "short_name": "Shop",
+      "description": "Browse and order groceries",
+      "url": "/Customer.html",
+      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Sign in",
+      "short_name": "Sign in",
+      "description": "Staff login",
+      "url": "/Login.html",
+      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "shop": {
+    "name": "Rocky's Mott St.",
+    "aisles": [
+      { "id": "produce",  "name": "Produce",        "order": 1 },
+      { "id": "bakery",   "name": "Bakery",         "order": 2 },
+      { "id": "dairy",    "name": "Dairy & Eggs",   "order": 3 },
+      { "id": "deli",     "name": "Deli & Cheese",  "order": 4 },
+      { "id": "meat",     "name": "Meat & Fish",    "order": 5 },
+      { "id": "pantry",   "name": "Pantry",         "order": 6 },
+      { "id": "drinks",   "name": "Drinks",         "order": 7 },
+      { "id": "frozen",   "name": "Frozen",         "order": 8 },
+      { "id": "household","name": "Household",      "order": 9 }
+    ]
+  },
+  "items": [
+    { "id": "sku-001", "barcode": "5449000000996", "name": "Coca-Cola Classic", "size": "330ml can", "price": 1.50, "stock": 48, "lowAt": 12, "aisle": "drinks", "image": "https://images.openfoodfacts.org/images/products/544/900/000/0996/front_en.118.400.jpg" },
+    { "id": "sku-002", "barcode": "5000112637939", "name": "Coca-Cola Zero", "size": "330ml can", "price": 1.50, "stock": 30, "lowAt": 12, "aisle": "drinks", "image": "https://images.openfoodfacts.org/images/products/500/011/263/7939/front_en.86.400.jpg" },
+    { "id": "sku-003", "barcode": "8000500310427", "name": "Nutella Hazelnut Spread", "size": "400g jar", "price": 5.95, "stock": 14, "lowAt": 6, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/800/050/031/0427/front_en.435.400.jpg" },
+    { "id": "sku-004", "barcode": "3017620422003", "name": "Nutella", "size": "750g jar", "price": 9.50, "stock": 8, "lowAt": 4, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.674.400.jpg" },
+    { "id": "sku-005", "barcode": "8076809513388", "name": "Barilla Spaghetti N.5", "size": "500g", "price": 2.40, "stock": 22, "lowAt": 8, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/807/680/951/3388/front_en.34.400.jpg" },
+    { "id": "sku-006", "barcode": "8076800195057", "name": "Barilla Penne Rigate", "size": "500g", "price": 2.40, "stock": 4, "lowAt": 8, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/807/680/019/5057/front_en.108.400.jpg" },
+    { "id": "sku-007", "barcode": "3033710065967", "name": "Lipton Yellow Label Tea", "size": "100 bags", "price": 4.20, "stock": 16, "lowAt": 6, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/303/371/006/5967/front_en.40.400.jpg" },
+    { "id": "sku-008", "barcode": "7622210449283", "name": "Oreo Original", "size": "154g", "price": 2.80, "stock": 24, "lowAt": 10, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/762/221/044/9283/front_en.50.400.jpg" },
+    { "id": "sku-009", "barcode": "5000159484695", "name": "KitKat 4-Finger", "size": "41.5g", "price": 0.95, "stock": 60, "lowAt": 20, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/500/015/948/4695/front_en.60.400.jpg" },
+    { "id": "sku-010", "barcode": "3046920022606", "name": "Lindt Excellence 70% Cocoa", "size": "100g bar", "price": 3.50, "stock": 18, "lowAt": 6, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/304/692/002/2606/front_en.69.400.jpg" },
+    { "id": "sku-011", "barcode": "3175680011480", "name": "Evian Mineral Water", "size": "1.5L", "price": 1.80, "stock": 36, "lowAt": 12, "aisle": "drinks", "image": "https://images.openfoodfacts.org/images/products/317/568/001/1480/front_en.81.400.jpg" },
+    { "id": "sku-012", "barcode": "5449000054227", "name": "Sprite", "size": "330ml can", "price": 1.50, "stock": 26, "lowAt": 12, "aisle": "drinks", "image": "https://images.openfoodfacts.org/images/products/544/900/005/4227/front_en.30.400.jpg" },
+    { "id": "sku-013", "barcode": "5449000131805", "name": "Fanta Orange", "size": "330ml can", "price": 1.50, "stock": 0, "lowAt": 12, "aisle": "drinks", "image": "https://images.openfoodfacts.org/images/products/544/900/013/1805/front_en.27.400.jpg" },
+    { "id": "sku-014", "barcode": "20916715",       "name": "Cathedral City Cheddar", "size": "350g", "price": 5.50, "stock": 9, "lowAt": 4, "aisle": "deli", "image": "https://images.openfoodfacts.org/images/products/20916715/front_en.21.400.jpg" },
+    { "id": "sku-015", "barcode": "3033491600203", "name": "Président Brie", "size": "200g", "price": 4.80, "stock": 11, "lowAt": 4, "aisle": "deli", "image": "https://images.openfoodfacts.org/images/products/303/349/160/0203/front_en.45.400.jpg" },
+    { "id": "sku-016", "barcode": "5011321925977", "name": "Hovis Soft White Bread", "size": "800g loaf", "price": 1.85, "stock": 7, "lowAt": 4, "aisle": "bakery", "image": "https://images.openfoodfacts.org/images/products/501/132/192/5977/front_en.30.400.jpg" },
+    { "id": "sku-017", "barcode": "5000295142787", "name": "Warburtons Crumpets", "size": "6 pack", "price": 1.10, "stock": 14, "lowAt": 6, "aisle": "bakery", "image": "https://images.openfoodfacts.org/images/products/500/029/514/2787/front_en.36.400.jpg" },
+    { "id": "sku-018", "barcode": "3270190022404", "name": "President Salted Butter", "size": "250g", "price": 3.20, "stock": 5, "lowAt": 4, "aisle": "dairy", "image": "https://images.openfoodfacts.org/images/products/327/019/002/2404/front_en.40.400.jpg" },
+    { "id": "sku-019", "barcode": "5000169018163", "name": "Heinz Baked Beans", "size": "415g tin", "price": 1.20, "stock": 28, "lowAt": 10, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/500/016/901/8163/front_en.96.400.jpg" },
+    { "id": "sku-020", "barcode": "8000500037560", "name": "Kinder Bueno", "size": "43g", "price": 1.15, "stock": 40, "lowAt": 15, "aisle": "pantry", "image": "https://images.openfoodfacts.org/images/products/800/050/003/7560/front_en.34.400.jpg" }
+  ]
+}
