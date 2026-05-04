@@ -113,28 +113,38 @@ const SEED_STOCK = [
 
 const STOCK_API = (() => {
   let _cache = [];
-  let _seeded = false;
+  let _initPromise = null;
 
   function _withImage(row) {
     return { ...row, image: row.image || offImageUrl(row.ean || '0000000000000') };
   }
 
-  async function _init() {
-    if (_seeded) return;
-    _seeded = true;
-    const { data, error } = await _SB.from('stock_items').select('*');
-    if (!error && data && data.length > 0) {
-      _cache = data.map(_withImage);
-      return;
-    }
-    // First run: seed the database
-    const rows = SEED_STOCK.map(x => ({
-      id: x.id, ean: x.ean, name: x.name, variant: x.variant,
-      price: x.price, qty: x.qty, low: x.low, aisle: x.aisle, brand: x.brand,
-      image: offImageUrl(x.ean),
-    }));
-    await _SB.from('stock_items').insert(rows);
-    _cache = rows.map(_withImage);
+  function _seedInMemory() {
+    _cache = SEED_STOCK.map(x => _withImage({ ...x, image: offImageUrl(x.ean) }));
+  }
+
+  function _init() {
+    if (_initPromise) return _initPromise;
+    _initPromise = (async () => {
+      try {
+        const { data, error } = await _SB.from('stock_items').select('*');
+        if (!error && data && data.length > 0) {
+          _cache = data.map(_withImage);
+          return;
+        }
+        // First run or empty table: try to seed Supabase
+        const rows = SEED_STOCK.map(x => ({
+          id: x.id, ean: x.ean, name: x.name, variant: x.variant,
+          price: x.price, qty: x.qty, low: x.low, aisle: x.aisle, brand: x.brand,
+          image: offImageUrl(x.ean),
+        }));
+        const ins = await _SB.from('stock_items').insert(rows);
+        if (!ins.error) { _cache = rows.map(_withImage); return; }
+      } catch (_) {}
+      // Supabase unavailable — fall back to in-memory seed
+      _seedInMemory();
+    })();
+    return _initPromise;
   }
 
   _init();
@@ -212,9 +222,9 @@ const STOCK_API = (() => {
       return AISLE_ORDER.filter(a => groups[a]).map(a => ({ aisle: a, lines: groups[a] }));
     },
     async reset() {
-      await _SB.from('stock_items').delete().neq('id', '');
+      try { await _SB.from('stock_items').delete().neq('id', ''); } catch (_) {}
       _cache = [];
-      _seeded = false;
+      _initPromise = null;
       await _init();
     },
     async suggestSub(itemId) {
