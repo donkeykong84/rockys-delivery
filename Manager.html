@@ -95,11 +95,12 @@
       }, []);
 
       // staff add
-      const [newStaff, setNewStaff] = React.useState({ name: '', email: '', role: 'picker' });
+      const [newStaff, setNewStaff] = React.useState({ name: '', email: '', role: 'picker', password: '' });
       const addStaff = () => {
-        if (!newStaff.email || !newStaff.name) return;
+        if (!newStaff.email || !newStaff.name) return alert('Name and email are required.');
+        if (!newStaff.password || newStaff.password.length < 6) return alert('Password must be at least 6 characters.');
         const r = RK_AUTH.addStaff(newStaff);
-        if (r.ok) { setStaff(RK_AUTH.staffOnly()); setNewStaff({ name: '', email: '', role: 'picker' }); }
+        if (r.ok) { setStaff(RK_AUTH.staffOnly()); setNewStaff({ name: '', email: '', role: 'picker', password: '' }); }
         else alert(r.error);
       };
       const removeStaff = (email) => { if (confirm(`Remove ${email}?`)) { RK_AUTH.removeStaff(email); setStaff(RK_AUTH.staffOnly()); } };
@@ -182,8 +183,9 @@
                   </tbody>
                 </table>
                 <div className="row" style={{ marginTop: 12 }}>
-                  <input placeholder="Name" value={newStaff.name} onChange={e => setNewStaff({ ...newStaff, name: e.target.value })}/>
+                  <input placeholder="Full name" value={newStaff.name} onChange={e => setNewStaff({ ...newStaff, name: e.target.value })}/>
                   <input placeholder="email@rockys.shop" value={newStaff.email} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })}/>
+                  <input type="password" placeholder="Password (min 6 chars)" value={newStaff.password} onChange={e => setNewStaff({ ...newStaff, password: e.target.value })}/>
                   <select value={newStaff.role} onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}>
                     <option value="picker">Picker</option>
                     <option value="driver">Driver</option>
