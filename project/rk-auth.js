@@ -35,9 +35,10 @@ const RK_AUTH = {
   staffOnly() { return this.loadUsers().filter(u => u.role !== 'customer'); },
   byRole(role) { return this.loadUsers().filter(u => u.role === role); },
 
-  signIn(email, _password) {
+  signIn(email, password) {
     const u = this.loadUsers().find(x => x.email.toLowerCase() === email.toLowerCase());
     if (!u) return { ok: false, error: 'No account found for that email.' };
+    if (u.password && u.password !== password) return { ok: false, error: 'Wrong password.' };
     sessionStorage.setItem('rk-current-user', JSON.stringify(u));
     return { ok: true, user: u };
   },
@@ -97,10 +98,10 @@ const RK_AUTH = {
   setDefaultAddress(id) {
     return this.updateCurrent({ defaultAddressId: id });
   },
-  addStaff({ email, name, role, landing }) {
+  addStaff({ email, name, role, landing, password }) {
     const users = this.loadUsers();
     if (users.find(x => x.email.toLowerCase() === email.toLowerCase())) return { ok: false, error: 'Email exists.' };
-    const u = { email, name, role, landing: landing || 'overview', created: Date.now() };
+    const u = { email, name, role, password: password || '', landing: landing || 'overview', created: Date.now() };
     users.push(u);
     this._users = users;
     this.persist();

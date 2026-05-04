@@ -32,7 +32,7 @@ function RKRoleHeader({ pageColor = 'var(--ink)', pageEmoji = '·' }) {
 }
 window.RKRoleHeader = RKRoleHeader;
 
-// Hook used by every role to subscribe to RK_STORE
+// Hook used by every role to subscribe to live orders from Supabase
 function useOrders() {
   const [orders, setOrders] = React.useState(() => window.RK_STORE.loadOrders());
   React.useEffect(() => window.RK_STORE.subscribe(setOrders), []);

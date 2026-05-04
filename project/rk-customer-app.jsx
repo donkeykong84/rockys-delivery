@@ -33,7 +33,7 @@ function CustomerApp({ inDeviceFrame = true }) {
   }, []);
 
   const myOrders = orders.filter(o => !user || o.customer?.email === user?.email || o.customer?.email === undefined);
-  const activeOrder = myOrders.filter(o => o.stage < 3 && !o.cancelled).slice(-1)[0];
+  const activeOrder = myOrders.filter(o => !o.cancelled).slice(-1)[0];
   const cartCount = cart.reduce((s, l) => s + l.qty, 0);
   const addToCart = (item, qty = 1) => setCart(p => {
     const i = p.findIndex(l => l.item.id === item.id);
@@ -60,7 +60,7 @@ function CustomerApp({ inDeviceFrame = true }) {
       ? { email: user.email, name: user.name, address: fmtAddr, addressId: addr?.id, note: pickerNote }
       : { email: 'guest@local', name: 'Guest', address: fmtAddr, note: pickerNote };
     const extra = addr?.lat && addr?.lng ? { lat: addr.lat, lng: addr.lng } : {};
-    const o = window.RK_STORE.placeOrder(cart, { ...customer, ...extra });
+    window.RK_STORE.placeOrder(cart, { ...customer, ...extra });
     setCart([]);
     setPickerNote('');
     setScreen('track');

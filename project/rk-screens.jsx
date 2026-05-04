@@ -212,6 +212,12 @@ function RKCheckout({ total = 47.85, onPlace, onBack, addresses = [], selectedAd
   const [adding, setAdding]   = React.useState(false);
   const [draft, setDraft] = React.useState({ label: 'Home', line1: '', line2: '', city: '', postcode: '', note: '' });
   const setD = (k, v) => setDraft(d => ({ ...d, [k]: v }));
+  const [cardNum, setCardNum] = React.useState('');
+  const [expiry, setExpiry]   = React.useState('');
+  const [cvv, setCvv]         = React.useState('');
+
+  const fmtCard = (v) => v.replace(/\D/g,'').slice(0,16).replace(/(.{4})/g,'$1 ').trim();
+  const fmtExp  = (v) => { const d = v.replace(/\D/g,'').slice(0,4); return d.length > 2 ? d.slice(0,2)+'/'+d.slice(2) : d; };
 
   const sel = addresses.find(a => a.id === selectedAddressId) || addresses[0];
 
@@ -316,15 +322,18 @@ function RKCheckout({ total = 47.85, onPlace, onBack, addresses = [], selectedAd
 
         {/* payment */}
         <RKSection eyebrow="03 · Payment">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 30, borderRadius: 4, background: 'var(--ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--paper)', fontFamily: 'var(--display)', fontSize: 11, letterSpacing: '0.1em' }}>
-              VISA
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input style={ckInput} placeholder="Card number" value={cardNum}
+              onChange={e => setCardNum(fmtCard(e.target.value))}
+              inputMode="numeric" maxLength={19}/>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...ckInput, flex: 1 }} placeholder="MM/YY" value={expiry}
+                onChange={e => setExpiry(fmtExp(e.target.value))}
+                inputMode="numeric" maxLength={5}/>
+              <input style={{ ...ckInput, flex: 1 }} placeholder="CVV" value={cvv}
+                onChange={e => setCvv(e.target.value.replace(/\D/g,'').slice(0,3))}
+                inputMode="numeric" maxLength={3} type="password"/>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: 'var(--display)', fontSize: 15, color: 'var(--ink)' }}>•••• 4823</div>
-              <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 12, color: 'var(--ink-3)' }}>Default</div>
-            </div>
-            <RKIcon k="chevron" size={14} color="var(--ink-3)"/>
           </div>
         </RKSection>
 
@@ -337,9 +346,14 @@ function RKCheckout({ total = 47.85, onPlace, onBack, addresses = [], selectedAd
       </div>
 
       <div style={{ position: 'sticky', bottom: 0, background: 'var(--paper)', borderTop: '1px solid var(--paper-3)', padding: '14px 18px 22px' }}>
-        <button onClick={onPlace} disabled={!sel}
-          style={{ width: '100%', background: sel ? 'var(--persimmon)' : 'var(--paper-3)', color: sel ? '#fff8ec' : 'var(--ink-3)', border: 'none', borderRadius: 999, padding: '16px', fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 14, letterSpacing: '0.04em', cursor: sel ? 'pointer' : 'not-allowed', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ paddingLeft: 4 }}>{sel ? 'Place order' : 'Add an address to continue'}</span>
+        {!sel && (
+          <div style={{ marginBottom: 8, padding: '8px 12px', background: '#fff4dc', borderRadius: 6, fontSize: 11, fontFamily: 'var(--sans)', color: 'var(--persimmon)', textAlign: 'center' }}>
+            Add a delivery address above before placing
+          </div>
+        )}
+        <button onClick={onPlace}
+          style={{ width: '100%', background: 'var(--persimmon)', color: '#fff8ec', border: 'none', borderRadius: 999, padding: '16px', fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 14, letterSpacing: '0.04em', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ paddingLeft: 4 }}>Place order</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{fmtPrice(total)} <RKIcon k="chevron" size={14} color="var(--paper)" strokeWidth={2}/></span>
         </button>
       </div>

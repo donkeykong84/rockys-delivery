@@ -52,9 +52,11 @@ function PickerApp({ order, onPicked, onAdvance, onCancel, onRestart, pushLog })
     const cands = all.filter(x => x.aisle === line.item.aisle && x.id !== line.id && x.qty > 0).slice(0, 6);
     const sub = await window.BRAIN.suggestSubstitute(line.item, cands).catch(() => null);
     const fallback = sub || { id: cands[0]?.id, reason: 'closest in same aisle' };
-    setSubs(s => ({ ...s, [line.id]: fallback }));
+    const subItem = cands.find(c => c.id === fallback.id);
+    const enriched = { ...fallback, name: subItem?.name || fallback.id };
+    setSubs(s => ({ ...s, [line.id]: enriched }));
     setHistory(h => [...h, { kind: 'sub', lineId: line.id }]);
-    pushLog?.(`Sub: ${fallback.id} — ${fallback.reason}`, 'ok');
+    pushLog?.(`Sub: ${enriched.name} — ${enriched.reason}`, 'ok');
     setThinking(null);
   };
 
@@ -108,7 +110,7 @@ function PickerApp({ order, onPicked, onAdvance, onCancel, onRestart, pushLog })
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: 'DM Serif Display', fontSize: 14, lineHeight: 1.15, textDecoration: isDone ? 'line-through' : 'none' }}>{line.item?.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{line.item?.variant} · qty {line.qty}</div>
-                    {sub && <div style={{ marginTop: 4, padding: 4, background: '#fff4dc', borderRadius: 4, fontSize: 10 }}><b>Sub:</b> {sub.id} · <i>{sub.reason}</i></div>}
+                    {sub && <div style={{ marginTop: 4, padding: 4, background: '#fff4dc', borderRadius: 4, fontSize: 10 }}><b>Sub:</b> {sub.name || sub.id} · <i>{sub.reason}</i></div>}
                     {isSkipped && <div style={{ fontSize: 10, color: 'var(--persimmon)', marginTop: 2, fontStyle: 'italic' }}>Skipped — return later</div>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -378,12 +380,32 @@ function SHAlerts() {
   );
 }
 function SHOrders() {
+  const [orders, setOrders] = React.useState(() => window.RK_STORE ? window.RK_STORE.loadOrders() : []);
+  React.useEffect(() => {
+    if (!window.RK_STORE) return;
+    return window.RK_STORE.subscribe(setOrders);
+  }, []);
+  const active = orders.filter(o => !o.cancelled && o.stage < 3);
+  const STAGE = ['Received', 'Picking', 'Out for delivery', 'Delivered'];
+  const stageColor = ['var(--ink-3)', 'var(--persimmon)', 'var(--olive)', 'var(--olive)'];
   return (
     <div style={{ padding: 14 }}>
-      <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--ink-3)', textTransform: 'uppercase' }}>Active</div>
-      <div style={{ marginTop: 8, padding: 14, background: 'var(--paper-2)', borderRadius: 8, fontFamily: 'DM Serif Display', fontStyle: 'italic', color: 'var(--ink-3)' }}>
-        Live orders show here when customers place them.
-      </div>
+      <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--ink-3)', textTransform: 'uppercase' }}>Active orders · {active.length}</div>
+      {active.length === 0 && (
+        <div style={{ marginTop: 8, padding: 14, background: 'var(--paper-2)', borderRadius: 8, fontFamily: 'DM Serif Display', fontStyle: 'italic', color: 'var(--ink-3)' }}>
+          No active orders right now.
+        </div>
+      )}
+      {active.map(o => (
+        <div key={o.id} style={{ marginTop: 10, padding: 12, background: 'var(--paper-2)', borderRadius: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 16 }}>#{o.id}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: stageColor[o.stage] }}>{STAGE[o.stage]}</div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{o.customer?.name || 'Customer'} · {o.lines.length} items</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 1, fontStyle: 'italic' }}>{o.address}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -412,11 +434,11 @@ function DriverApp({ orders, onAdvance }) {
         </div>
       ) : (
         <>
-          <FakeMap address="21 Mott St, Apt 4F" order={order}/>
+          <FakeMap order={order}/>
           <div style={{ padding: 18 }}>
             <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--ink-3)', textTransform: 'uppercase' }}>Now delivering · #{order.id}</div>
-            <div style={{ fontFamily: 'DM Serif Display', fontSize: 22, marginTop: 4 }}>21 Mott Street, 4F</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>0.8 mi · ETA 6 min · Buzzer 4F</div>
+            <div style={{ fontFamily: 'DM Serif Display', fontSize: 18, marginTop: 4, lineHeight: 1.2 }}>{order.address || order.customer?.address || '—'}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>{order.customer?.name || 'Customer'}{order.customer?.note ? ` · ${order.customer.note}` : ''}</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button style={{ flex: 1, padding: 12, border: '1px solid var(--paper-3)', background: 'var(--paper)', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>📞 Call</button>
               <button style={{ flex: 1, padding: 12, border: '1px solid var(--paper-3)', background: 'var(--paper)', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>🧭 Navigate</button>

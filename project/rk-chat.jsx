@@ -1,8 +1,7 @@
-// rk-chat.jsx — staff chat (Stock Handler / Picker / Driver). Customer excluded.
-// Shared via window.STAFF_CHAT singleton + subscribers.
+// rk-chat.jsx — Supabase-backed staff chat. Real-time across all devices.
 
 const STAFF_CHAT = {
-  messages: JSON.parse(localStorage.getItem('rk-chat') || 'null') || [
+  _SEED: [
     { id: 1, from: 'stock', name: 'Mara (Stock)', text: 'Morning all. Lurpak landed, two cases.', t: '08:14' },
     { id: 2, from: 'picker', name: 'Theo (Picker)', text: 'Got it. Shelf 3 is half-empty though.', t: '08:16' },
     { id: 3, from: 'stock', name: 'Mara (Stock)', text: 'Refilling now.', t: '08:17' },
@@ -10,32 +9,77 @@ const STAFF_CHAT = {
     { id: 5, from: 'picker', name: 'Theo (Picker)', text: 'Anyone seen the digestives delivery? Shelf is bare.', t: '08:42' },
     { id: 6, from: 'stock', name: 'Mara (Stock)', text: 'Coming on the 11am van.', t: '08:43' },
   ],
-  subs: new Set(),
-  send(from, name, text) {
-    const t = new Date().toTimeString().slice(0, 5);
-    const m = { id: Date.now(), from, name, text, t };
-    this.messages.push(m);
-    if (this.messages.length > 200) this.messages = this.messages.slice(-200);
-    localStorage.setItem('rk-chat', JSON.stringify(this.messages));
-    this.subs.forEach(fn => fn(this.messages));
+  _msgs: null,
+  _subs: new Set(),
+  _channel: null,
+  _seeded: false,
+
+  async _init() {
+    if (this._seeded) return;
+    this._seeded = true;
+    const { data } = await _SB.from('chat_messages').select('*').order('id', { ascending: true }).limit(200);
+    if (data && data.length > 0) {
+      this._msgs = data.map(r => ({ id: r.id, from: r.from_role, name: r.from_name, text: r.text, t: r.t }));
+    } else {
+      // Seed initial messages
+      const rows = this._SEED.map(m => ({ from_role: m.from, from_name: m.name, text: m.text, t: m.t }));
+      const { data: inserted } = await _SB.from('chat_messages').insert(rows).select();
+      this._msgs = (inserted || this._SEED).map(r => ({ id: r.id, from: r.from_role || r.from, name: r.from_name || r.name, text: r.text, t: r.t }));
+    }
+    this._notify();
+    this._startRealtime();
   },
-  subscribe(fn) { this.subs.add(fn); return () => this.subs.delete(fn); },
+
+  _startRealtime() {
+    if (this._channel) return;
+    this._channel = _SB.channel('chat-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+        const r = payload.new;
+        const msg = { id: r.id, from: r.from_role, name: r.from_name, text: r.text, t: r.t };
+        if (!this._msgs) this._msgs = [];
+        if (!this._msgs.find(m => m.id === msg.id)) {
+          this._msgs.push(msg);
+          if (this._msgs.length > 200) this._msgs = this._msgs.slice(-200);
+          this._notify();
+        }
+      })
+      .subscribe();
+  },
+
+  _notify() { this._subs.forEach(fn => fn(this._msgs || [])); },
+
+  get messages() { return this._msgs || this._SEED.slice(); },
+
+  async send(from, name, text) {
+    const t = new Date().toTimeString().slice(0, 5);
+    await _SB.from('chat_messages').insert({ from_role: from, from_name: name, text, t });
+  },
+
+  subscribe(fn) {
+    this._subs.add(fn);
+    this._init();
+    fn(this.messages);
+    return () => this._subs.delete(fn);
+  },
 };
 window.STAFF_CHAT = STAFF_CHAT;
 
 function ChatBubble({ role }) {
   const [open, setOpen] = React.useState(false);
-  const [msgs, setMsgs] = React.useState(STAFF_CHAT.messages);
+  const [msgs, setMsgs] = React.useState(() => STAFF_CHAT.messages);
   const [draft, setDraft] = React.useState('');
+  const [seen, setSeen] = React.useState(msgs.length);
   const scrollRef = React.useRef(null);
 
   React.useEffect(() => STAFF_CHAT.subscribe(setMsgs), []);
-  React.useEffect(() => { if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [open, msgs.length]);
+  React.useEffect(() => {
+    if (open && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (open) setSeen(msgs.length);
+  }, [open, msgs.length]);
 
   const me = { stock: 'Mara (Stock)', picker: 'Theo (Picker)', driver: 'Sam (Driver)' }[role] || role;
   const send = () => { if (draft.trim()) { STAFF_CHAT.send(role, me, draft.trim()); setDraft(''); } };
-  const unread = msgs.length - (parseInt(localStorage.getItem('rk-chat-seen-' + role) || '0', 10));
-  React.useEffect(() => { if (open) localStorage.setItem('rk-chat-seen-' + role, String(msgs.length)); }, [open, msgs.length]);
+  const unread = msgs.length - seen;
 
   return (
     <div style={{ position: 'absolute', right: 14, bottom: 14, zIndex: 1000 }}>

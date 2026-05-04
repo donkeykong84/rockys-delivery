@@ -4,6 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Manager</title>
+  <meta name="theme-color" content="#1d1a14"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon.svg"/>
   <link rel="stylesheet" href="brand.css"/>
   <style>
     html,body { margin:0; padding:0; min-height:100vh; background:var(--paper-2); font-family:Geist,system-ui,sans-serif; color:var(--ink); }
@@ -43,7 +46,9 @@
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="rk-config.js"></script>
+  <script src="rk-supabase.js"></script>
   <script src="rk-auth.js"></script>
   <script src="rk-stock.js"></script>
   <script src="rk-brain.js"></script>
@@ -81,25 +86,27 @@
 
       const [chat, setChat] = React.useState([]);
       React.useEffect(() => {
-        try { setChat(JSON.parse(localStorage.getItem('rk-staff-chat') || '[]')); } catch (e) {}
-        const onStorage = (e) => { if (e.key === 'rk-staff-chat') setChat(JSON.parse(e.newValue || '[]')); };
+        const load = () => { try { setChat(JSON.parse(localStorage.getItem('rk-chat') || '[]')); } catch (e) {} };
+        load();
+        const onStorage = (e) => { if (e.key === 'rk-chat') load(); };
         window.addEventListener('storage', onStorage);
-        const t = setInterval(() => { try { setChat(JSON.parse(localStorage.getItem('rk-staff-chat') || '[]')); } catch (e) {} }, 1500);
+        const t = setInterval(load, 1500);
         return () => { window.removeEventListener('storage', onStorage); clearInterval(t); };
       }, []);
 
       // staff add
-      const [newStaff, setNewStaff] = React.useState({ name: '', email: '', role: 'picker' });
+      const [newStaff, setNewStaff] = React.useState({ name: '', email: '', role: 'picker', password: '' });
       const addStaff = () => {
-        if (!newStaff.email || !newStaff.name) return;
+        if (!newStaff.email || !newStaff.name) return alert('Name and email are required.');
+        if (!newStaff.password || newStaff.password.length < 6) return alert('Password must be at least 6 characters.');
         const r = RK_AUTH.addStaff(newStaff);
-        if (r.ok) { setStaff(RK_AUTH.staffOnly()); setNewStaff({ name: '', email: '', role: 'picker' }); }
+        if (r.ok) { setStaff(RK_AUTH.staffOnly()); setNewStaff({ name: '', email: '', role: 'picker', password: '' }); }
         else alert(r.error);
       };
       const removeStaff = (email) => { if (confirm(`Remove ${email}?`)) { RK_AUTH.removeStaff(email); setStaff(RK_AUTH.staffOnly()); } };
 
       const cancel = (id) => { if (confirm(`Cancel order ${id}?`)) RK_STORE.cancelOrder(id); };
-      const reset = () => { if (confirm('Wipe all orders & restock everything? (demo reset)')) { RK_STORE.reset(); window.STOCK_API.reset && window.STOCK_API.reset(); } };
+      const reset = () => { if (confirm('Wipe all orders & restock everything? (demo reset)')) { RK_STORE.reset(); window.STOCK_API.reset(); } };
 
       return (
         <>
@@ -176,8 +183,9 @@
                   </tbody>
                 </table>
                 <div className="row" style={{ marginTop: 12 }}>
-                  <input placeholder="Name" value={newStaff.name} onChange={e => setNewStaff({ ...newStaff, name: e.target.value })}/>
+                  <input placeholder="Full name" value={newStaff.name} onChange={e => setNewStaff({ ...newStaff, name: e.target.value })}/>
                   <input placeholder="email@rockys.shop" value={newStaff.email} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })}/>
+                  <input type="password" placeholder="Password (min 6 chars)" value={newStaff.password} onChange={e => setNewStaff({ ...newStaff, password: e.target.value })}/>
                   <select value={newStaff.role} onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}>
                     <option value="picker">Picker</option>
                     <option value="driver">Driver</option>
@@ -224,6 +232,7 @@
         </>
       );
     }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
     ReactDOM.createRoot(document.body.appendChild(document.createElement('div'))).render(<Manager/>);
   </script>
 </body>
